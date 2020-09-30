@@ -23,8 +23,11 @@ class QLearningBase:
     def update_rule(self, previous_state, current_state, selected_action, reward):
         try:
             old_q_val = self.q_table[previous_state][selected_action]
-        except:
-            pass
+        except KeyError:
+            if selected_action not in self.q_table[previous_state]:
+                self.q_table[previous_state] = {selected_action: 0}
+            old_q_val = 0
+
 
         _, max_next_q_val = self.get_action_and_max_q_value(current_state)
         future_q_value = old_q_val + self.learning_rate * (reward + self.discount_factor * max_next_q_val - old_q_val)
