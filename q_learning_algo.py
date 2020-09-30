@@ -82,10 +82,7 @@ class Simulate:
             self.run_session(eps)
 
 
-
-
 if __name__ == '__main__':
-
     s = Simulate()
     s.train(0.8)
 

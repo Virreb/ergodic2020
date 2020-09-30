@@ -68,5 +68,5 @@ def end_games():
 
 
 if __name__ == "__main__":
-    #main()
-    end_games()
+    main()
+    #end_games()
