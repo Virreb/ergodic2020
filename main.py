@@ -1,7 +1,7 @@
 import api
 from game_layer import GameLayer
 
-api_key = "pc3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
+api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 # The different map names can be found on considition.com/rules
 map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
 
@@ -59,6 +59,14 @@ def take_turn():
     for error in game_layer.game_state.errors:
         print("Error: " + error)
 
+def end_games():
+    from api import get_games, end_game
+    games = get_games(api_key)
+    for game in games:
+        end_game(api_key, game['gameId'])
+    print('dsasd')
+
 
 if __name__ == "__main__":
-    main()
+    #main()
+    end_games()
