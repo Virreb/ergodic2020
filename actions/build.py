@@ -2,13 +2,17 @@ import numpy as np
 
 
 def get_best_available_position_to_residences(state, direction='nearest'):
-    all_res_x, all_res_y = [], []
-    for res in state.residences:
-        all_res_x.append(res.X)
-        all_res_y.append(res.Y)
+    if len(state.residences) == 0:
+        centrum_x = len(state.map)//2
+        centrum_y = centrum_x
+    else:
+        all_res_x, all_res_y = [], []
+        for res in state.residences:
+            all_res_x.append(res.X)
+            all_res_y.append(res.Y)
 
-    centrum_x = np.round(np.mean(all_res_x), 0)
-    centrum_y = np.round(np.mean(all_res_y), 0)
+        centrum_x = np.round(np.mean(all_res_x), 0)
+        centrum_y = np.round(np.mean(all_res_y), 0)
 
     if direction == 'nearest':
         min_dist = 5000
@@ -67,19 +71,19 @@ def building(game_layer, building_type):
 
         for building_blueprint in available_building_blueprints:
 
-            if building_type in ['Park', 'Mall', 'WindTurbine'] and building_type != building_blueprint.name:
+            if building_type in ['Park', 'Mall', 'WindTurbine'] and building_type != building_blueprint.building_name:
                 continue
 
             if building_blueprint.cost < state.funds and nbr_turns_left > 1.5*(100/building_blueprint.build_speed):  # TODO: check 1.5 factor
-                possible_buildings_to_build.append(building_blueprint.name)
+                possible_buildings_to_build.append(building_blueprint.building_name)
 
         if len(possible_buildings_to_build) > 0:
             building_to_build = np.random.choice(possible_buildings_to_build)  # TODO: Do not random this
 
             return_dict['build_progress'] = 0
-            return_dict['building_name'] = building_to_build.building_name
+            return_dict['building_name'] = building_to_build
             return_dict['callback'] = game_layer.place_foundation
-            return_dict['args'] = (build_coord, building_to_build.building_name)
+            return_dict['args'] = (build_coord, building_to_build)
 
     return return_dict
 
