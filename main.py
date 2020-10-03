@@ -66,6 +66,7 @@ def train(q_table, eps):
         if selected_action == 'wait':
             game_layer.wait()
         else:
+            print(f'action info: {actions_callback[selected_action].get("text", "nothing to say")}')
             actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
 
         current_state_agg = game_state.aggregated_state_string(game_layer)
@@ -79,6 +80,7 @@ def train(q_table, eps):
                                current_state=current_state_agg,
                                selected_action=selected_action,
                                reward=delta_score)
+        print('--------------------------------------------')
 
     print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
