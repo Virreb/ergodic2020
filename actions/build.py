@@ -40,7 +40,7 @@ def building(game_layer, building_type):
     state = game_layer.game_state
     # Residence, Park, Mall, WindTurbine
 
-    return_dict = {'build_progress': None, 'building_name': None, 'callback': None, 'args': None}
+    return_dict = {'text': None, 'callback': None, 'args': None}
 
     # if any building is in progress, continue building
     if building_type == 'Residence':
@@ -62,8 +62,7 @@ def building(game_layer, building_type):
     for b in current_buildings:
 
         if b.build_progress < 100:    # Keep on building
-            return_dict['build_progress'] = b.build_progress
-            return_dict['building_name'] = b.building_name
+            return_dict['text'] = f'Building: {b.building_name} - {b.build_progress}%'
             return_dict['callback'] = game_layer.build
             return_dict['args'] = ((b.X, b.Y), )
             return return_dict
@@ -96,8 +95,7 @@ def building(game_layer, building_type):
         if len(possible_buildings_to_build) > 0:
             building_to_build = np.random.choice(possible_buildings_to_build)  # TODO: Do not random this
 
-            return_dict['build_progress'] = 0
-            return_dict['building_name'] = building_to_build
+            return_dict['text'] = f'Built new: {building_to_build}'
             return_dict['callback'] = game_layer.place_foundation
             return_dict['args'] = (build_coord, building_to_build)
 
