@@ -49,14 +49,20 @@ def train(q_table, eps):
         actions_callback = get_possible_actions_with_callback()
         possible_actions = list(actions_callback.keys())
 
+        if len(possible_actions) == 0:
+            possible_actions.append('wait')
         for possible_action in possible_actions:
             if possible_action not in q_table:
                 q_table[prev_state_agg][possible_action] = 0
 
         action_q_vals = {action: q_table[prev_state_agg][action] for action in possible_actions}
+
         selected_action = select_action(action_q_vals, eps)
         print(f'took action {selected_action}')
-        actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
+        if selected_action == 'wait':
+            game_layer.wait()
+        else:
+            actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
 
         current_state_agg = game_state.aggregated_state_string(game_layer)
         current_score = game_state.get_score()
