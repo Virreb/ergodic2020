@@ -58,7 +58,7 @@ def building(game_layer, building_type):
         possible_buildings_to_build = []
 
         if building_type == 'Residence':
-            available_building_blueprints = [game_layer.get_utility_blueprint(b.building_name)
+            available_building_blueprints = [game_layer.get_residence_blueprint(b.building_name)
                                              for b in state.available_residence_buildings]
 
         elif building_type in ['Park', 'Mall', 'WindTurbine']:
