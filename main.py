@@ -2,7 +2,7 @@ import pickle
 from game_layer import GameLayer
 from q_learning_algo import QLearningBase
 import numpy as np
-from actions import build
+from actions import build, maintain
 
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 # The different map names can be found on considition.com/rules
@@ -26,8 +26,12 @@ def get_possible_actions_with_callback():
     action_callback_dict = dict()
     for build_type in build_types:
         rtn_dict = build.building(game_layer, build_type)
-        if rtn_dict['build_progress'] is not None:
+        if rtn_dict['callback'] is not None:
             action_callback_dict[f'build_{build_type}'] = rtn_dict
+
+    rtn_dict = maintain.residence(game_layer)
+    if rtn_dict['callback'] is not None:
+        action_callback_dict['maintain'] = rtn_dict
 
     return action_callback_dict
 
@@ -49,14 +53,21 @@ def train(q_table, eps):
         actions_callback = get_possible_actions_with_callback()
         possible_actions = list(actions_callback.keys())
 
+        if len(possible_actions) == 0:
+            possible_actions.append('wait')
         for possible_action in possible_actions:
             if possible_action not in q_table:
                 q_table[prev_state_agg][possible_action] = 0
 
         action_q_vals = {action: q_table[prev_state_agg][action] for action in possible_actions}
+
         selected_action = select_action(action_q_vals, eps)
         print(f'took action {selected_action}')
-        actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
+        if selected_action == 'wait':
+            game_layer.wait()
+        else:
+            print(f'action info: {actions_callback[selected_action].get("text", "nothing to say")}')
+            actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
 
         current_state_agg = game_state.aggregated_state_string(game_layer)
         current_score = game_state.get_score()
@@ -69,6 +80,7 @@ def train(q_table, eps):
                                current_state=current_state_agg,
                                selected_action=selected_action,
                                reward=delta_score)
+        print('--------------------------------------------')
 
     print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
