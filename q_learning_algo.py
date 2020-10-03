@@ -8,10 +8,11 @@ class QLearningBase:
         self.learning_rate = 0.1
         self.discount_factor = 0.99
 
-    def get_action_and_max_q_value(self, state):
-        best_q_val = None
+    @staticmethod
+    def get_action_and_max_q_value(action_values):
+        best_q_val = 0
         best_action = None
-        for action, q_value in self.q_table[state].items():
+        for action, q_value in action_values.items():
             if best_q_val is None:
                 best_q_val = q_value
                 best_action = action
@@ -28,8 +29,7 @@ class QLearningBase:
                 self.q_table[previous_state] = {selected_action: 0}
             old_q_val = 0
 
-
-        _, max_next_q_val = self.get_action_and_max_q_value(current_state)
+        _, max_next_q_val = self.get_action_and_max_q_value(self.q_table[current_state])
         future_q_value = old_q_val + self.learning_rate * (reward + self.discount_factor * max_next_q_val - old_q_val)
         self.q_table[previous_state][selected_action] = future_q_value
 
