@@ -24,6 +24,9 @@ def take_turn():
     # TODO The following is a short example of how to use the StarterKit
 
     state = game_layer.game_state
+
+    agg_state = get_aggregated_state(state)
+
     if len(state.residences) < 1:
         for i in range(len(state.map)):
             for j in range(len(state.map)):
@@ -157,7 +160,7 @@ def get_aggregated_state(state):
         else:
             building_health = "LOW"
     else:
-        building_health = "LOW"
+        building_health = "NONE"
     aggregated_state["building_health"] = building_health
 
     # Max Temp Diff
@@ -178,6 +181,13 @@ def get_aggregated_state(state):
     aggregated_state["max_temp_diff"] = actual_diff
 
     return aggregated_state
+
+
+def aggregated_state_string(agg_state):
+    agg = ''
+    for key, val in agg_state.items():
+        agg += f'_{key}_{val}_|'
+    return agg
 
 
 if __name__ == "__main__":
