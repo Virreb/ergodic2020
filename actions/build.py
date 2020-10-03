@@ -43,7 +43,12 @@ def building(game_layer, building_type):
     return_dict = {'build_progress': None, 'building_name': None, 'callback': None, 'args': None}
 
     # if any building is in progress, continue building
-    for b in state.residences + state.utilities:
+    if building_type == 'Residence':
+        current_buildings = state.residences
+    elif building_type in ['Park', 'Mall', 'WindTurbine']:
+        current_buildings = [b for b in state.utilities if b.building_name == building_type]
+
+    for b in current_buildings:
 
         if b.build_progress < 100:    # Keep on building
             return_dict['build_progress'] = b.build_progress
