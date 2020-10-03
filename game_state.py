@@ -67,6 +67,15 @@ class GameState:
     def get_aggregated_state(self, game_layer):
         aggregated_state = {}
 
+        # Turn
+        if self.turn < 100:
+            turn = 'BEGINNING'
+        elif 100 <= self.turn < 500:
+            turn = 'MID'
+        else:
+            turn = 'END'
+        aggregated_state["turn"] = turn
+
         # Funds
         if self.funds >= 40000:
             funds = "HIGH"
