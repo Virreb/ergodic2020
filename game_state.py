@@ -67,6 +67,14 @@ class GameState:
     def get_aggregated_state(self, game_layer):
         aggregated_state = {}
 
+        # Any ongoing build progress
+        ongoing_building = False
+        for res in self.residences + self.utilities:
+            if res.build_progress < 100:
+                ongoing_building = True
+                break
+        aggregated_state['ongoing_building'] = ongoing_building
+
         # Turn
         if self.turn < 100:
             turn = 'BEGINNING'
@@ -136,6 +144,7 @@ class GameState:
             actual_diff = "LOW"
         aggregated_state["max_energy_diff"] = actual_diff
 
+        """
         # Min Happiness Pop Tick
         min_happiness_per_tick_pop = None
         for resident in self.residences:
@@ -146,6 +155,7 @@ class GameState:
             if resident.happiness_per_tick_per_pop < min_happiness_per_tick_pop:
                 min_happiness_per_tick_pop = resident.happiness_per_tick_per_pop
         aggregated_state["min_happiness_per_tick_pop"] = min_happiness_per_tick_pop
+        """
 
         # Min Building Health
         building_health = []

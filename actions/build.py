@@ -32,7 +32,8 @@ def get_best_available_position_to_residences(state, direction='nearest'):
     return build_coord
 
 
-def building(game_layer, state, building_type):
+def building(game_layer, building_type):
+    state = game_layer.game_state
     # Residence, Park, Mall, WindTurbine
 
     return_dict = {'build_progress': None, 'building_name': None, 'callback': None, 'args': None}

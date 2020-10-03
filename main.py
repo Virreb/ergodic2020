@@ -2,6 +2,7 @@ import pickle
 from game_layer import GameLayer
 from q_learning_algo import QLearningBase
 import numpy as np
+from actions import build
 
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 # The different map names can be found on considition.com/rules
@@ -20,6 +21,17 @@ def select_action(actions_q_values, eps):
     return action
 
 
+def get_possible_actions_with_callback():
+    build_types = ['Residence', 'Park', 'Mall', 'WindTurbine']
+    action_callback_dict = dict()
+    for build_type in build_types:
+        rtn_dict = build.building(game_layer, build_type)
+        if rtn_dict['build_progress'] is not None:
+            action_callback_dict[f'build_{build_type}'] = rtn_dict
+
+    return action_callback_dict
+
+
 def train(q_table, eps):
     game_layer.new_game(map_name)
 
@@ -33,7 +45,8 @@ def train(q_table, eps):
         if prev_state_agg not in q_table:
             q_table[prev_state_agg] = dict()
 
-        possible_actions = ['a', 'b']  # todo get possible actions
+        actions_callback = get_possible_actions_with_callback()
+        possible_actions = list(actions_callback.keys())
 
         for possible_action in possible_actions:
             if possible_action not in q_table:
@@ -41,12 +54,13 @@ def train(q_table, eps):
 
         action_q_vals = {action: q_table[prev_state_agg][action] for action in possible_actions}
         selected_action = select_action(action_q_vals, eps)
-
-        # Todo perform action
+        print(f'took action {selected_action}')
+        actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
 
         current_state_agg = game_state.aggregated_state_string(game_layer)
         current_score = game_state.get_score()
         delta_score = current_score-prev_score
+        print(f'reward: {delta_score}')
 
         q_learning.update_rule(previous_state=prev_state_agg,
                                current_state=current_state_agg,
@@ -133,5 +147,6 @@ def end_games():
 
 
 if __name__ == "__main__":
-    main_old()
-    #end_games()
+    end_games()
+    train(dict(), 0.5)
+
