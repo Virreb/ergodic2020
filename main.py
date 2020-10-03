@@ -2,7 +2,7 @@ import pickle
 from game_layer import GameLayer
 from q_learning_algo import QLearningBase
 import numpy as np
-from actions import build
+from actions import build, maintain
 
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 # The different map names can be found on considition.com/rules
@@ -26,8 +26,12 @@ def get_possible_actions_with_callback():
     action_callback_dict = dict()
     for build_type in build_types:
         rtn_dict = build.building(game_layer, build_type)
-        if rtn_dict['build_progress'] is not None:
+        if rtn_dict['callback'] is not None:
             action_callback_dict[f'build_{build_type}'] = rtn_dict
+
+    rtn_dict = maintain.residence(game_layer)
+    if rtn_dict['callback'] is not None:
+        action_callback_dict['maintain'] = rtn_dict
 
     return action_callback_dict
 
