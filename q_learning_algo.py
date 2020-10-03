@@ -10,7 +10,7 @@ class QLearningBase:
 
     @staticmethod
     def get_action_and_max_q_value(action_values):
-        best_q_val = 0
+        best_q_val = None
         best_action = None
         for action, q_value in action_values.items():
             if best_q_val is None:
@@ -19,6 +19,8 @@ class QLearningBase:
             if q_value > best_q_val:
                 best_action = action
                 best_q_val = q_value
+        if best_q_val is None:
+            best_q_val = 0
         return best_action, best_q_val
 
     def update_rule(self, previous_state, current_state, selected_action, reward):

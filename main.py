@@ -40,6 +40,7 @@ def train(q_table, eps):
     game_state = game_layer.game_state
     q_learning = QLearningBase(q_table=q_table)
     while game_state.turn < game_state.max_turns:
+        print(f'turn: {game_state.turn}')
         prev_state_agg = game_state.aggregated_state_string(game_layer)
         prev_score = game_state.get_score()
         if prev_state_agg not in q_table:
@@ -62,6 +63,8 @@ def train(q_table, eps):
         delta_score = current_score-prev_score
         print(f'reward: {delta_score}')
 
+        if current_state_agg not in q_table:
+            q_table[current_state_agg] = dict()
         q_learning.update_rule(previous_state=prev_state_agg,
                                current_state=current_state_agg,
                                selected_action=selected_action,
