@@ -2,7 +2,7 @@ import pickle
 from game_layer import GameLayer
 from q_learning_algo import QLearningBase
 import numpy as np
-from actions import build, maintain
+from actions import build, maintain, adjust
 
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 # The different map names can be found on considition.com/rules
@@ -32,6 +32,10 @@ def get_possible_actions_with_callback():
     rtn_dict = maintain.residence(game_layer)
     if rtn_dict['callback'] is not None:
         action_callback_dict['maintain'] = rtn_dict
+
+    rtn_dict = adjust.heat(game_layer)
+    if rtn_dict['callback'] is not None:
+        action_callback_dict['adjust_heat'] = rtn_dict
 
     return action_callback_dict
 

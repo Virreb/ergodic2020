@@ -214,7 +214,7 @@ class Blueprint:
         self.base_energy_need: float = blueprint['baseEnergyNeed']
         self.build_speed: int = blueprint['buildSpeed']
         self.type: str = blueprint['type']
-        self.release_tick: int = blueprint['releaseTick']
+        self.release_tick: int = blueprint.get('releaseTick', None)
 
 
 class BlueprintUtilityBuilding(Blueprint):
