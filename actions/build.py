@@ -1,7 +1,21 @@
 import numpy as np
+from constants import *
+from math import ceil
 
 
-def get_best_available_position_to_residences(state, direction='nearest'):
+def inside_effect_radius_for_same_building_type(state, x, y, building_type):
+    # loop over all utilities, if the same building type (mall or park) is within effect radius, do not build
+    for b in state.utilities:
+        if b.building_name == building_type:
+            dist = np.abs(b.X - x) + np.abs(b.Y - y)  # manhattan distance
+
+            if dist <= EFFECT_RADIUS[building_type]:
+                return True
+
+    return False
+
+
+def get_best_available_position_to_residences(state, building_type, direction='nearest'):
     all_res_x, all_res_y = [], []
     if len(state.residences) == 0:
         centrum_x = len(state.map)//2
@@ -29,6 +43,11 @@ def get_best_available_position_to_residences(state, direction='nearest'):
             if state.map[i][j] == 0 and i not in all_res_x and j not in all_res_y:
                 dist = np.abs(i-centrum_x) + np.abs(j-centrum_y)    # manhattan distance
 
+                # if within effect radius, try next placement
+                if building_type in ['Park', 'Mall'] and \
+                        inside_effect_radius_for_same_building_type(state, i, j, building_type):
+                    continue
+
                 if direction == 'nearest' and dist < min_dist:
                     min_dist = dist
                     build_coord = (i, j)
@@ -40,68 +59,84 @@ def get_best_available_position_to_residences(state, direction='nearest'):
     return build_coord
 
 
+def choose_residence_to_build(state, available_buildings):
+    # TODO: Implement better logic here
+
+    building_to_build = np.random.choice(available_buildings)
+
+    return building_to_build
+
+
 def building(game_layer, building_type):
     state = game_layer.game_state
     # Residence, Park, Mall, WindTurbine
 
     return_dict = {'text': None, 'callback': None, 'args': None}
 
-    # if any building is in progress, continue building
+    # only build one sort of building at the time (only that action can be visible)
     if building_type == 'Residence':
-        # check if any residences are ongoing
+        # check if any utility building in progress, then return none
         for b in state.utilities:
             if b.build_progress < 100:
                 return return_dict
 
         current_buildings = state.residences
 
-    elif building_type in ['Park', 'Mall', 'WindTurbine']:
+    elif building_type in ALL_UTILITY_BUILDING_NAMES:
 
-        # check if any residences are ongoing   # TODO: Check if b in list of residence types instead of = residence
+        # Check if any residence building or other utility building in progress, then return None
         for b in state.residences + state.utilities:
-            if b.building_name != building_type and b.build_progress < 100:
+            if (b.building_name in ALL_RESIDENCE_BUILDING_NAMES or b.building_name != building_type) \
+                    and b.build_progress < 100:
                 return return_dict
-
 
         current_buildings = [b for b in state.utilities if b.building_name == building_type]
 
     for b in current_buildings:
 
         if b.build_progress < 100:    # Keep on building
-            return_dict['text'] = f'Building: {b.building_name} - {b.build_progress}%'
+            progress = b.build_progress + game_layer.get_blueprint(b.building_name).build_speed
+            return_dict['text'] = f'Building: {b.building_name} - {progress}%'
             return_dict['callback'] = game_layer.build
             return_dict['args'] = ((b.X, b.Y), )
             return return_dict
 
     if building_type in ['Residence', 'Park', 'Mall']:
-        build_coord = get_best_available_position_to_residences(state, direction='nearest')
+        build_coord = get_best_available_position_to_residences(state, building_type, direction='nearest')
     elif building_type in ['WindTurbine']:
-        build_coord = get_best_available_position_to_residences(state, direction='furthest')
+        build_coord = get_best_available_position_to_residences(state, building_type, direction='furthest')
 
     if build_coord is not None:
-        nbr_turns_left = state.max_turns - state.turn     # TODO: calculate this somewhere else?
+        nbr_turns_left = state.max_turns - state.turn
         possible_buildings_to_build = []
 
         if building_type == 'Residence':
             available_building_blueprints = [game_layer.get_residence_blueprint(b.building_name)
                                              for b in state.available_residence_buildings]
 
-        elif building_type in ['Park', 'Mall', 'WindTurbine']:
+        elif building_type in ALL_UTILITY_BUILDING_NAMES:
             available_building_blueprints = [game_layer.get_utility_blueprint(b.building_name)
                                              for b in state.available_utility_buildings]
 
         for building_blueprint in available_building_blueprints:
+            nbr_turns_to_build = ceil(100/building_blueprint.build_speed)   # round up
 
-            if building_type in ['Park', 'Mall', 'WindTurbine'] and building_type != building_blueprint.building_name:
+            if building_type in ALL_UTILITY_BUILDING_NAMES and building_type != building_blueprint.building_name:
                 continue
 
-            if building_blueprint.cost < state.funds and nbr_turns_left > 1.5*(100/building_blueprint.build_speed):  # TODO: check 1.5 factor
+            if building_blueprint.cost < state.funds and \
+                    nbr_turns_left > NBR_TURNS_LEFT_FACTOR*nbr_turns_to_build:  # TODO: check 1.5 factor
                 possible_buildings_to_build.append(building_blueprint.building_name)
 
         if len(possible_buildings_to_build) > 0:
-            building_to_build = np.random.choice(possible_buildings_to_build)  # TODO: Do not random this
 
-            return_dict['text'] = f'Built new: {building_to_build}'
+            if building_type == 'Residence':
+                building_to_build = choose_residence_to_build(state, possible_buildings_to_build)
+
+            elif building_type in ALL_UTILITY_BUILDING_NAMES:
+                building_to_build = possible_buildings_to_build[0]  # there will only be one here
+
+            return_dict['text'] = f'Starting to build new: {building_to_build}'
             return_dict['callback'] = game_layer.place_foundation
             return_dict['args'] = (build_coord, building_to_build)
 

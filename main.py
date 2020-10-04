@@ -40,51 +40,72 @@ def get_possible_actions_with_callback():
     return action_callback_dict
 
 
-def train(q_table, eps):
+def train(q_table, eps, verbose=False):
     game_layer.new_game(map_name)
 
     print("Starting game: " + game_layer.game_state.game_id)
+
+    # init
     game_layer.start_game()
     game_state = game_layer.game_state
     q_learning = QLearningBase(q_table=q_table)
+
+    # take turns
     while game_state.turn < game_state.max_turns:
-        print(f'turn: {game_state.turn}')
+
+        if verbose:
+            print(f'turn: {game_state.turn}, funds: {game_state.funds}, pop: {game_state.total_population}')
+
+        # get last turn
         prev_state_agg = game_state.aggregated_state_string(game_layer)
         prev_score = game_state.get_score()
+
         if prev_state_agg not in q_table:
             q_table[prev_state_agg] = dict()
 
+        # get possible actions
         actions_callback = get_possible_actions_with_callback()
         possible_actions = list(actions_callback.keys())
 
-        if len(possible_actions) == 0:
+        if len(possible_actions) == 0:      # TODO: Borde vi inte alltid tillåta wait?
             possible_actions.append('wait')
         for possible_action in possible_actions:
             if possible_action not in q_table:
                 q_table[prev_state_agg][possible_action] = 0
 
+        # get q vals and select action
         action_q_vals = {action: q_table[prev_state_agg][action] for action in possible_actions}
+        selected_action = select_action(action_q_vals, eps)     # TODO: Implement logic to lower eps over turns
 
-        selected_action = select_action(action_q_vals, eps)
-        print(f'took action {selected_action}')
+        if verbose:
+            print(f'took action {selected_action}')
+
         if selected_action == 'wait':
             game_layer.wait()
         else:
-            print(f'action info: {actions_callback[selected_action].get("text", "nothing to say")}')
             actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
 
+            if verbose:
+                print(f'action info: {actions_callback[selected_action].get("text", "nothing to say")}')
+
+        # get new state and score
         current_state_agg = game_state.aggregated_state_string(game_layer)
         current_score = game_state.get_score()
         delta_score = current_score-prev_score
-        print(f'reward: {delta_score}')
 
+        if verbose:
+            print(f'reward: {delta_score}')
+
+        # update q_table
         if current_state_agg not in q_table:
             q_table[current_state_agg] = dict()
+
         q_learning.update_rule(previous_state=prev_state_agg,
                                current_state=current_state_agg,
                                selected_action=selected_action,
                                reward=delta_score)
-        print('--------------------------------------------')
+        if verbose:
+            print('--------------------------------------------')
 
     print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
@@ -101,14 +122,14 @@ def main_old():
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
 
 
-def training_main(q_table_name=None):
+def training_main(q_table_name=None, verbose=False):
     try:
         with open(q_table_name, 'rb') as f:
             q_table = pickle.load(f)
     except FileNotFoundError:
         q_table = dict()
 
-    train(q_table, 0.8)
+    train(q_table, 0.5, verbose=verbose)
 
     if q_table_name is not None:
         with open(q_table_name, 'wb') as f:
@@ -163,10 +184,11 @@ def end_games():
     games = get_games(api_key)
     for game in games:
         end_game(api_key, game['gameId'])
-    print('dsasd')
+    print('Ended all current games')
 
 
 if __name__ == "__main__":
     end_games()
-    train(dict(), 0.5)
+    # train(dict(), 0.5)
+    training_main('q_tables/q_victor_20201004.pkl', verbose=True)
 

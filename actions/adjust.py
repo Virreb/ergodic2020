@@ -3,7 +3,9 @@ def heat(game_layer, temperature_threshold=1.5):
 
     return_dict = {'text': None, 'callback': None, 'args': None}
 
-    # if any building is in progress, continue building
+    if state.funds <= 150:
+        return return_dict
+
     min_thres = 1.5
     for b in state.residences:
         blueprint = game_layer.get_residence_blueprint(b.building_name)
