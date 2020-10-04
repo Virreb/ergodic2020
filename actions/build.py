@@ -57,7 +57,7 @@ def building(game_layer, building_type):
 
     elif building_type in ['Park', 'Mall', 'WindTurbine']:
 
-        # check if any residences are ongoing
+        # check if any residences are ongoing   # TODO: Check if b in list of residence types instead of = residence
         for b in state.residences + state.utilities:
             if b.building_name != building_type and b.build_progress < 100:
                 return return_dict
