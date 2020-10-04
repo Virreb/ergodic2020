@@ -163,14 +163,14 @@ class GameState:
             building_health.append(resident.health)
         if len(building_health) > 0:
             if min(building_health) > 80:
-                building_health = "HIGH"
+                building_health_val = "HIGH"
             elif 40 < min(building_health) < 80:
-                building_health = "MEDIUM"
+                building_health_val = "MEDIUM"
             else:
-                building_health = "LOW"
+                building_health_val = "LOW"
         else:
-            building_health = "NONE"
-        aggregated_state["building_health"] = building_health
+            building_health_val = "NONE"
+        aggregated_state["building_health"] = building_health_val
 
         # Max Temp Diff
         max_temp_diff = 0

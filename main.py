@@ -98,10 +98,11 @@ def main_old():
 
 
 def training_main(q_table_name=None):
-    q_table = dict()
-    if q_table_name is not None:
+    try:
         with open(q_table_name, 'rb') as f:
             q_table = pickle.load(f)
+    except FileNotFoundError:
+        q_table = dict()
 
     train(q_table, 0.8)
 

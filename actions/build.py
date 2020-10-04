@@ -2,17 +2,21 @@ import numpy as np
 
 
 def get_best_available_position_to_residences(state, direction='nearest'):
+    all_res_x, all_res_y = [], []
     if len(state.residences) == 0:
         centrum_x = len(state.map)//2
         centrum_y = centrum_x
     else:
-        all_res_x, all_res_y = [], []
         for res in state.residences:
             all_res_x.append(res.X)
             all_res_y.append(res.Y)
 
         centrum_x = np.round(np.mean(all_res_x), 0)
         centrum_y = np.round(np.mean(all_res_y), 0)
+
+    for res in state.utilities:
+        all_res_x.append(res.X)
+        all_res_y.append(res.Y)
 
     if direction == 'nearest':
         min_dist = 5000
@@ -22,7 +26,7 @@ def get_best_available_position_to_residences(state, direction='nearest'):
     build_coord = None
     for i in range(len(state.map)):
         for j in range(len(state.map)):
-            if state.map[i][j] == 0:
+            if state.map[i][j] == 0 and i not in all_res_x and j not in all_res_y:
                 dist = np.abs(i-centrum_x) + np.abs(j-centrum_y)    # manhattan distance
 
                 if direction == 'nearest' and dist < min_dist:
@@ -45,8 +49,8 @@ def building(game_layer, building_type):
     # if any building is in progress, continue building
     if building_type == 'Residence':
         # check if any residences are ongoing
-        for b in state.residences + state.utilities:
-            if b.building_name != building_type and b.build_progress < 100:
+        for b in state.utilities:
+            if b.build_progress < 100:
                 return return_dict
 
         current_buildings = state.residences
