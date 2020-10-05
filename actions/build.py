@@ -44,7 +44,7 @@ def get_best_available_position_to_residences(state, building_type, direction='n
                 dist = np.abs(i-centrum_x) + np.abs(j-centrum_y)    # manhattan distance
 
                 # if within effect radius, try next placement
-                if building_type in ['Park', 'Mall'] and \
+                if building_type in ALL_UTILITY_BUILDING_NAMES and \
                         inside_effect_radius_for_same_building_type(state, i, j, building_type):
                     continue
 
@@ -101,10 +101,11 @@ def building(game_layer, building_type):
             return_dict['args'] = ((b.X, b.Y), )
             return return_dict
 
-    if building_type in ['Residence', 'Park', 'Mall']:
-        build_coord = get_best_available_position_to_residences(state, building_type, direction='nearest')
-    elif building_type in ['WindTurbine']:
-        build_coord = get_best_available_position_to_residences(state, building_type, direction='furthest')
+    build_coord = get_best_available_position_to_residences(state, building_type, direction='nearest')
+    # if building_type in ['Residence', 'Park', 'Mall']:
+    #     build_coord = get_best_available_position_to_residences(state, building_type, direction='nearest')
+    # elif building_type in ['WindTurbine']:
+    #     build_coord = get_best_available_position_to_residences(state, building_type, direction='furthest')
 
     if build_coord is not None:
         nbr_turns_left = state.max_turns - state.turn

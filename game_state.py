@@ -1,4 +1,5 @@
 from typing import List
+from constants import *
 
 
 class GameState:
@@ -67,13 +68,21 @@ class GameState:
     def get_aggregated_state(self, game_layer):
         aggregated_state = {}
 
-        # Any ongoing build progress
+        # Any ongoing residence building progress
         ongoing_building = False
-        for res in self.residences + self.utilities:
+        for res in self.residences:
             if res.build_progress < 100:
                 ongoing_building = True
                 break
-        aggregated_state['ongoing_building'] = ongoing_building
+        aggregated_state['ongoing_residence_building'] = ongoing_building
+
+        # Any ongoing utility build progress
+        ongoing_building = False
+        for res in self.utilities:
+            if res.build_progress < 100:
+                ongoing_building = True
+                break
+        aggregated_state['ongoing_utility_building'] = ongoing_building
 
         # Turn
         if self.turn < 100:
@@ -85,53 +94,89 @@ class GameState:
         aggregated_state["turn"] = turn
 
         # Funds
-        if self.funds >= 40000:
+        if self.funds >= 10000:
             funds = "HIGH"
-        elif 10000 < self.funds < 40000:
-            funds = "MEDIUM"
         else:
             funds = "LOW"
         aggregated_state["funds"] = funds
 
         # Queue
-        if self.housing_queue >= 30:
+        if self.housing_queue >= 20:
             housing_queue = "HIGH"
-        elif 15 < self.housing_queue < 30:
-            housing_queue = "MEDIUM"
         else:
             housing_queue = "LOW"
         aggregated_state["housing_queue"] = housing_queue
 
         # Queue Happiness
-        if self.queue_happiness >= 30:
-            queue_happiness = "HIGH"
-        elif 15 < self.queue_happiness < 30:
-            queue_happiness = "MEDIUM"
-        else:
-            queue_happiness = "LOW"
-        aggregated_state["queue_happiness"] = queue_happiness
+        # if self.queue_happiness >= 30:
+        #     queue_happiness = "HIGH"
+        # elif 15 < self.queue_happiness < 30:
+        #     queue_happiness = "MEDIUM"
+        # else:
+        #     queue_happiness = "LOW"
+        # aggregated_state["queue_happiness"] = queue_happiness
 
-        # Population Capacity
+        # Capacity - queue (housing_demand)
         current_pop = 0
         max_capacity = 0
-        for resident in self.residences:
-            current_pop = current_pop + resident.current_pop
-            bp = game_layer.get_residence_blueprint(resident.building_name)
-            max_capacity = max_capacity + bp.max_pop
-        pop_capacity = max_capacity - current_pop
-        if pop_capacity >= 30:
-            pop_capacity = "HIGH"
-        elif 5 < pop_capacity < 30:
-            pop_capacity = "MEDIUM"
+        for res in self.residences:
+            current_pop += res.current_pop
+            bp = game_layer.get_residence_blueprint(res.building_name)
+            max_capacity += bp.max_pop
+
+        current_housing_capacity = max_capacity - current_pop
+        housing_demand = current_housing_capacity - self.housing_queue
+
+        if housing_demand > 20:
+            aggregated_state["housing_demand"] = "LOW"
+        elif housing_demand >= 0:
+            aggregated_state["housing_demand"] = "MEDIUM"
         else:
-            pop_capacity = "LOW"
-        aggregated_state["pop_capacity"] = pop_capacity
+            aggregated_state["housing_demand"] = "HIGH"
+
+        # minimum relative happiness in residences
+        all_res_happ = []
+        for res in self.residences:
+            res_bp = game_layer.get_residence_blueprint(res.building_name)
+            all_res_happ.append(res.happiness_per_tick_per_pop/res_bp.max_happiness)
+
+        if len(all_res_happ) > 0:
+            if min(all_res_happ) < 0.75:
+                aggregated_state["min_happiness_per_tick_per_pop"] = "LOW"
+            else:
+                aggregated_state["min_happiness_per_tick_per_pop"] = "HIGH"
+        else:
+            aggregated_state["min_happiness_per_tick_per_pop"] = "LOW"
+
+        # look if a free spot exists on map
+        aggregated_state["free_tile_exists"] = False
+        all_buildings_x, all_buildings_y = [], []
+        for b in self.residences + self.utilities:
+            all_buildings_x.append(b.X)
+            all_buildings_y.append(b.Y)
+
+        for i in range(len(self.map)):
+            for j in range(len(self.map)):
+                if self.map[i][j] == 0 and i not in all_buildings_x and j not in all_buildings_y:
+                    aggregated_state["free_tile_exists"] = True
+
+        # check energy level
+        sum_residence_energies = 0
+        for res in self.residences:
+            sum_residence_energies += res.effective_energy_in
+
+        needed_level = 0
+        for energy_level in self.energy_levels[1:]:
+            if sum_residence_energies >= energy_level.energy_threshold:
+                needed_level += 1
+
+        aggregated_state["needed_energy_level"] = needed_level
 
         # Max Diff Energy
         max_energy_diff = 0
         actual_diff = 0
-        for resident in self.residences:
-            current_diff = resident.requested_energy_in - resident.effective_energy_in
+        for res in self.residences:
+            current_diff = res.requested_energy_in - res.effective_energy_in
             if abs(current_diff) > max_energy_diff:
                 max_energy_diff = abs(current_diff)
                 actual_diff = current_diff
@@ -147,55 +192,106 @@ class GameState:
         """
         # Min Happiness Pop Tick
         min_happiness_per_tick_pop = None
-        for resident in self.residences:
+        for res in self.residences:
             # For the first building, set the min_happiness
             if min_happiness_per_tick_pop is None:
-                min_happiness_per_tick_pop = resident.happiness_per_tick_per_pop
+                min_happiness_per_tick_pop = res.happiness_per_tick_per_pop
             # For the rest of the buildings, pick the lowest.
-            if resident.happiness_per_tick_per_pop < min_happiness_per_tick_pop:
-                min_happiness_per_tick_pop = resident.happiness_per_tick_per_pop
+            if res.happiness_per_tick_per_pop < min_happiness_per_tick_pop:
+                min_happiness_per_tick_pop = res.happiness_per_tick_per_pop
         aggregated_state["min_happiness_per_tick_pop"] = min_happiness_per_tick_pop
         """
 
+        # Income per Pop per Tick
+        total_income = 0
+        for res in self.residences:
+            res_bp = game_layer.get_residence_blueprint(res.building_name)
+            total_income += res_bp.income_per_pop * res.current_pop
+        if current_pop > 0:
+            income_per_pop_per_tick = total_income / current_pop
+        else:
+            income_per_pop_per_tick = 0
+
+        if income_per_pop_per_tick > 8:
+            aggregated_state["mean_income_per_tick"] = 'HIGH'
+        else:
+            aggregated_state["mean_income_per_tick"] = 'LOW'
+
+        # If residence type exists
+        for res_type in ALL_RESIDENCE_BUILDING_NAMES:
+            aggregated_state[f"residence_{res_type}_exists"] = False
+            for res in self.residences:
+                if res_type == res.building_name:
+                    aggregated_state[f"residence_{res_type}_exists"] = True
+                    break
+
+        # find min emissitivity
+        all_emissitivities = []
+        for res in self.residences:
+            res_bp = game_layer.get_residence_blueprint(res.building_name)
+            all_emissitivities.append(res_bp.emissivity)
+
+        if len(all_emissitivities) > 0:
+            if min(all_emissitivities) < 0.2:
+                aggregated_state["min_emissivity"] = 'LOW'
+            else:
+                aggregated_state["min_emissivity"] = 'HIGH'
+        else:
+            aggregated_state["min_emissivity"] = 'LOW'
+
         # Min Building Health
         building_health = []
-        for resident in self.residences:
-            building_health.append(resident.health)
+        for res in self.residences:
+            building_health.append(res.health)
+
         if len(building_health) > 0:
-            if min(building_health) > 80:
+            if min(building_health) > 50:
                 building_health_val = "HIGH"
-            elif 40 < min(building_health) < 80:
-                building_health_val = "MEDIUM"
             else:
                 building_health_val = "LOW"
         else:
             building_health_val = "NONE"
-        aggregated_state["building_health"] = building_health_val
+        aggregated_state["min_building_health"] = building_health_val
 
         # Max Temp Diff
         max_temp_diff = 0
         actual_diff = 0
-        for resident in self.residences:
-            current_diff = 21 - resident.temperature
+        for res in self.residences:
+            current_diff = res.temperature - 21
             if abs(current_diff) > max_temp_diff:
                 max_temp_diff = abs(current_diff)
                 actual_diff = current_diff
 
-        if actual_diff >= 3:
+        if actual_diff >= TEMPERATURE_THRESHOLD:
             actual_diff = "HOT"
-        elif -3 < actual_diff < 3:
+        elif -TEMPERATURE_THRESHOLD < actual_diff < TEMPERATURE_THRESHOLD:
             actual_diff = "LAGOM"
         else:
             actual_diff = "COLD"
+
         aggregated_state["max_temp_diff"] = actual_diff
 
         return aggregated_state
 
-    def aggregated_state_string(self, game_layer):
+    def get_state_string(self, game_layer, q_step_name):
+
         agg_state = self.get_aggregated_state(game_layer)
+
+        state_keys_in_step = {
+            'main': ['needed_energy_level', 'free_tile_exists', 'min_happiness_per_tick_per_pop', 'housing_demand',
+                     'ongoing_residence_building', 'ongoing_utility_building', 'turn', 'funds'],
+            'residence': ['housing_queue', 'funds'].
+                extend([f"residence_{r}_exists" for r in ALL_RESIDENCE_BUILDING_NAMES]),
+            'improve': ['min_building_health', 'max_temp_diff', 'min_happiness_per_tick_per_pop', 'needed_energy_level',
+                        'ongoing_utility_building', 'max_energy_diff'],
+            'utility': ['mean_income_per_tick', 'needed_energy_level', 'min_happiness_per_tick_per_pop'],
+            'upgrade': ['min_emissivity', 'needed_energy_level', 'min_happiness_per_tick_per_pop']
+        }
+
         agg = ''
-        for key, val in agg_state.items():
-            agg += f'_{key}_{val}_|'
+        for key in state_keys_in_step[q_step_name]:
+            agg += f'_{key}_{agg_state[key]}_|'
+
         return agg
 
 

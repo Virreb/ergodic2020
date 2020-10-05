@@ -5,8 +5,9 @@ ALL_UTILITY_BUILDING_NAMES = ['Park', 'Mall', 'WindTurbine']
 
 NBR_TURNS_LEFT_FACTOR = 1.5     # how many turns that should be left at min in order to build something new
 EFFECT_RADIUS = {
-    'Mall': 1,
-    'Park': 2
+    'Mall': 3,
+    'Park': 2,
+    'WindTurbine': 2
 }
 
-
+TEMPERATURE_THRESHOLD = 2

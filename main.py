@@ -3,6 +3,7 @@ from game_layer import GameLayer
 from q_learning_algo import QLearningBase
 import numpy as np
 from actions import build, maintain, adjust
+from constants import *
 
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 # The different map names can be found on considition.com/rules
@@ -57,7 +58,8 @@ def train(q_table, eps, verbose=False):
             print(f'turn: {game_state.turn}, funds: {game_state.funds}, pop: {game_state.total_population}')
 
         # get last turn
-        prev_state_agg = game_state.aggregated_state_string(game_layer)
+        # prev_state_agg = game_state.aggregated_state_string(game_layer)
+        prev_state_agg = game_state.get_state_string(game_layer, q_step_name='main')
         prev_score = game_state.get_score()
 
         if prev_state_agg not in q_table:
@@ -89,7 +91,8 @@ def train(q_table, eps, verbose=False):
                 print(f'action info: {actions_callback[selected_action].get("text", "nothing to say")}')
 
         # get new state and score
-        current_state_agg = game_state.aggregated_state_string(game_layer)
+        # current_state_agg = game_state.aggregated_state_string(game_layer)
+        current_state_agg = game_state.get_state_string(game_layer, q_step_name='main')
         current_score = game_state.get_score()
         delta_score = current_score-prev_score
 
