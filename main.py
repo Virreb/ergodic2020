@@ -11,6 +11,44 @@ map_name = "training1"  # TODO: You map choice here. If left empty, the map "tra
 game_layer = GameLayer(api_key)
 
 
+class StateActionContainer:
+    def __init__(self, previous_state, current_state, action):
+        self.previous_state = previous_state
+        self.current_state = current_state
+        self.action = action
+
+
+class QLearning:
+    def __init__(self, main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table):
+        self.main_q_learning = QLearningBase(main_q_table)
+        self.residence_q_learning = QLearningBase(residence_q_table)
+        self.improve_q_learning = QLearningBase(improve_q_table)
+        self.utility_q_learning = QLearningBase(utility_q_table)
+        self.upgrade_q_learning = QLearningBase(upgrade_q_table)
+
+    def get_q_learning_routine(self, key) -> QLearningBase:
+        if key == 'main':
+            return self.main_q_learning
+        elif key == 'residence':
+            return self.residence_q_learning
+        elif key == 'improve':
+            return self.improve_q_learning
+        elif key == 'utility':
+            return self.utility_q_learning
+        elif key == 'upgrade':
+            return self.upgrade_q_learning
+        else:
+            raise RuntimeError(f'key {key} not supported')
+
+    def update_tables(self, action_chain, reward):
+        for key, collection in action_chain.items():
+            q_learning_routine = self.get_q_learning_routine(key)
+            q_learning_routine.update_rule(previous_state=collection.previous_state,
+                                           current_state=collection.current_state,
+                                           selected_action=collection.action,
+                                           reward=reward)
+
+
 def select_action(actions_q_values, eps):
     r = np.random.rand()
     if r < eps:
