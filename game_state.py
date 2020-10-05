@@ -37,6 +37,7 @@ class GameState:
         self.utilities: List[Utility] = []
         self.errors: List[str] = []
         self.messages: List[str] = []
+        self.temp_diff = 0
 
     @property
     def total_population(self):
@@ -53,6 +54,7 @@ class GameState:
         self.funds = state['funds']
         self.total_co2 = state['totalCo2']
         self.total_happiness = state['totalHappiness']
+        self.temp_diff = state['currentTemp'] - self.current_temp
         self.current_temp = state['currentTemp']
         self.queue_happiness = state['queueHappiness']
         self.housing_queue = state['housingQueue']
