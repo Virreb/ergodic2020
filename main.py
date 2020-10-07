@@ -70,13 +70,13 @@ class QLearning:
                                                      action=main_action,
                                                      current_state=None)
 
-        if main_action == 'build':
+        if main_action == 'residence':
             possible_actions = possible_action_structure['residence']['actions']
-            build_action = self.get_action(possible_actions, 'residence', residence_state)
-            action_chain['build'] = StateActionCollection(previous_state=residence_state,
-                                                          action=build_action,
-                                                          current_state=None)
-            callback_collection = possible_action_structure['residence']['callback_collection']
+            residence_action = self.get_action(possible_actions, 'residence', residence_state)
+            action_chain['residence'] = StateActionCollection(previous_state=residence_state,
+                                                              action=residence_action,
+                                                              current_state=None)
+            callback_collection = possible_action_structure['residence']['callback_collection'][residence_action]
 
         elif main_action == 'improve':
             possible_actions = possible_action_structure['improve']['actions']
@@ -91,7 +91,7 @@ class QLearning:
                 action_chain['utility'] = StateActionCollection(previous_state=utility_state,
                                                                 action=utility_action,
                                                                 current_state=None)
-                callback_collection = possible_action_structure['utility']['callback_collection']
+                callback_collection = possible_action_structure['utility']['callback_collection'][utility_action]
 
             elif improve_action == 'maintain':
                 callback_collection = possible_action_structure['maintain']['callback_collection']
@@ -102,7 +102,7 @@ class QLearning:
                 action_chain['upgrade'] = StateActionCollection(previous_state=upgrade_state,
                                                                 action=upgrade_action,
                                                                 current_state=None)
-                callback_collection = possible_action_structure['upgrade']['callback_collection']
+                callback_collection = possible_action_structure['upgrade']['callback_collection'][upgrade_action]
 
             elif improve_action == 'adjust_energy':
                 callback_collection = possible_action_structure['adjust_energy']['callback_collection']
@@ -116,9 +116,6 @@ class QLearning:
             raise RuntimeError(f'main action {main_action} is not a valid main action')
 
         return action_chain, callback_collection
-
-
-
 
 
 def select_action(actions_q_values, eps):
@@ -149,6 +146,16 @@ def get_possible_actions_with_callback():
 
     return action_callback_dict
 
+
+def get_possible_actions_structure():
+    possible_actions_structure = dict()
+
+    rtn_dict = adjust.heat(game_layer)
+    if rtn_dict['callback'] is not None:
+        possible_actions_structure['adjust_energy'] = {'callback_collection': rtn_dict}
+
+    possible_actions_structure['wait'] = {'callback_collection': {'callback': game_layer.wait,
+                                                                  'args': None}}
 
 def train(q_table, eps, verbose=False):
     game_layer.new_game(map_name)
