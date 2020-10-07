@@ -35,14 +35,16 @@ def get_possible_actions_structure():
     # loop over utilities
     for utility_type in ALL_UTILITY_BUILDING_NAMES:
         rtn_dict = build.building(game_layer, utility_type)
-        if rtn_dict['callback'] is not None:
+        if len(rtn_dict) > 0:
 
-            if 'utility' not in possible_actions_structure:
-                possible_actions_structure['utility'] = dict()
-            if 'callback_collection' not in possible_actions_structure['utility']:
-                possible_actions_structure['utility']['callback_collection'] = dict()
+            if rtn_dict['callback'] is not None:
 
-            possible_actions_structure['utility']['callback_collection'][utility_type] = rtn_dict
+                if 'utility' not in possible_actions_structure:
+                    possible_actions_structure['utility'] = dict()
+                if 'callback_collection' not in possible_actions_structure['utility']:
+                    possible_actions_structure['utility']['callback_collection'] = dict()
+
+                possible_actions_structure['utility']['callback_collection'][utility_type] = rtn_dict
 
     # upgrade
     upgrade_dict = upgrade.do(game_layer)
