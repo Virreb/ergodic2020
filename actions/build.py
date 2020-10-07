@@ -77,14 +77,14 @@ def building(game_layer, building_type):
     state = game_layer.game_state
     # Residence, Park, Mall, WindTurbine
 
-    return_dict = {'text': None, 'callback': None, 'args': None}
+    return_dict = {}
 
     # only build one sort of building at the time (only that action can be visible)
     if building_type == 'Residence':
         # check if any utility building in progress, then return none
         for b in state.utilities:
             if b.build_progress < 100:
-                return {}
+                return return_dict
 
         current_buildings = state.residences
 
