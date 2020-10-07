@@ -177,5 +177,4 @@ def end_games():
 if __name__ == "__main__":
     end_games()
     # train(dict(), 0.5)
-    #training_main('q_tables/q_victor_20201004.pkl', verbose=True)
-    main_old()
+    training_main('q_tables/q_victor_20201004.pkl', verbose=True)
