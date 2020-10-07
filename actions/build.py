@@ -65,7 +65,7 @@ def get_callbacks_for_available_residences(game_layer, build_coord, available_bu
     actions_dict = {}
     for b in available_buildings:
         actions_dict[b] = {
-            'text': f'Starting to build a new residence: f{b}',
+            'text': f'Starting to build a new residence: {b}',
             'callback': game_layer.place_foundation,
             'args': (build_coord, b)
         }
@@ -105,7 +105,7 @@ def building(game_layer, building_type):
             return_dict['text'] = f'Building: {b.building_name} - {progress}%'
             return_dict['callback'] = game_layer.build
             return_dict['args'] = ((b.X, b.Y), )
-            return return_dict
+            return {b.building_name: return_dict}
 
     build_coord = get_best_available_position_to_residences(state, building_type, direction='nearest')
     # if building_type in ['Residence', 'Park', 'Mall']:
