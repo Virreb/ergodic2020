@@ -84,7 +84,7 @@ def building(game_layer, building_type):
         # check if any utility building in progress, then return none
         for b in state.utilities:
             if b.build_progress < 100:
-                return return_dict
+                return {}
 
         current_buildings = state.residences
 
