@@ -2,7 +2,7 @@ import pickle
 from game_layer import GameLayer
 from q_learning_algo import QLearningBase
 import numpy as np
-from actions import build, maintain, adjust
+from actions import build, maintain, adjust, demolish, upgrade
 from constants import *
 
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
@@ -71,7 +71,7 @@ class QLearning:
                                                      current_state=None)
 
         if main_action == 'residence':
-            possible_actions = possible_action_structure['residence']['actions']
+            possible_actions = list(possible_action_structure['residence']['callback_collection'].keys())
             residence_action = self.get_action(possible_actions, 'residence', residence_state)
             action_chain['residence'] = StateActionCollection(previous_state=residence_state,
                                                               action=residence_action,
@@ -86,17 +86,17 @@ class QLearning:
                                                             current_state=None)
 
             if improve_action == 'utility':
-                possible_actions = possible_action_structure['utility']['actions']
+                possible_actions = list(possible_action_structure['utility']['callback_collection'].keys())
                 utility_action = self.get_action(possible_actions, 'utility', utility_state)
                 action_chain['utility'] = StateActionCollection(previous_state=utility_state,
                                                                 action=utility_action,
                                                                 current_state=None)
                 callback_collection = possible_action_structure['utility']['callback_collection'][utility_action]
 
-            elif improve_action == 'maintain':
+            elif improve_action == 'maintain':#
                 callback_collection = possible_action_structure['maintain']['callback_collection']
             elif improve_action == 'upgrade':
-                possible_actions = possible_action_structure['upgrade']['actions']
+                possible_actions = list(possible_action_structure['upgrade']['callback_collection'].keys())
                 upgrade_action = self.get_action(possible_actions, 'upgrade', upgrade_state)
 
                 action_chain['upgrade'] = StateActionCollection(previous_state=upgrade_state,
@@ -104,13 +104,13 @@ class QLearning:
                                                                 current_state=None)
                 callback_collection = possible_action_structure['upgrade']['callback_collection'][upgrade_action]
 
-            elif improve_action == 'adjust_energy':
+            elif improve_action == 'adjust_energy':#
                 callback_collection = possible_action_structure['adjust_energy']['callback_collection']
             else:
                 raise RuntimeError(f'improve action {improve_action} not valid')
-        elif main_action == 'demolish':
+        elif main_action == 'demolish':#
             callback_collection = possible_action_structure['demolish']['callback_collection']
-        elif main_action == 'wait':
+        elif main_action == 'wait': #
             callback_collection = possible_action_structure['wait']['callback_collection']
         else:
             raise RuntimeError(f'main action {main_action} is not a valid main action')
@@ -150,12 +150,65 @@ def get_possible_actions_with_callback():
 def get_possible_actions_structure():
     possible_actions_structure = dict()
 
+    possible_actions_structure['wait'] = {'callback_collection': {'callback': game_layer.wait,
+                                                                  'args': None}}
+
+    rtn_dict = demolish.residence(game_layer)
+    if rtn_dict['callback'] is not None:
+        possible_actions_structure['demolish'] = {'callback_collection': rtn_dict}
+
+
+    #improve
+    rtn_dict = maintain.residence(game_layer)
+    if rtn_dict['callback'] is not None:
+        possible_actions_structure['maintain'] = {'callback_collection': rtn_dict}
+
     rtn_dict = adjust.heat(game_layer)
     if rtn_dict['callback'] is not None:
         possible_actions_structure['adjust_energy'] = {'callback_collection': rtn_dict}
 
-    possible_actions_structure['wait'] = {'callback_collection': {'callback': game_layer.wait,
-                                                                  'args': None}}
+    # loop over utilities
+    for utility_type in ALL_UTILITY_BUILDING_NAMES:
+        possible_actions = list()
+        rtn_dict = build.building(game_layer, utility_type)
+        if rtn_dict['callback'] is not None:
+
+            if 'utility' not in possible_actions_structure:
+                possible_actions_structure['utility'] = dict()
+            if 'callback_collection' not in possible_actions_structure['utility']:
+                possible_actions_structure['utility']['callback_collection'] = dict()
+
+            possible_actions_structure['utility']['callback_collection'][utility_type] = rtn_dict
+
+    # upgrade
+    upgrade_dict = upgrade.do(game_layer)
+    if len(upgrade_dict) > 0:
+        possible_actions_structure['upgrade'] = {'callback_collection': upgrade_dict}
+
+    # residence
+    build_dict = build.building(game_layer, 'Residence')
+    if len(build_dict) > 0:
+        possible_actions_structure['residence'] = {'callback_collection': build_dict}
+
+
+    # improve actions
+    improve_actions = list()
+    for key in ['utiltiy', 'maintain', 'upgrade', 'adjust_energy']:
+        if key in possible_actions_structure:
+            improve_actions.append(key)
+    if len(improve_actions) > 0:
+        possible_actions_structure['improve'] = {'actions': improve_actions}
+
+    # main actions
+    main_actions = list()
+    for key in ['residence', 'wait', 'demolish', 'improve']:
+        if key in possible_actions_structure:
+            main_actions.append(key)
+    if len(main_actions) > 0:
+        possible_actions_structure['main'] = {'actions': main_actions}
+
+    return possible_actions_structure
+
 
 def train(q_table, eps, verbose=False):
     game_layer.new_game(map_name)
