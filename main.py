@@ -152,17 +152,6 @@ def train(q_table, eps, verbose=False):
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
 
 
-def main_old():
-    game_layer.new_game(map_name)
-    print("Starting game: " + game_layer.game_state.game_id)
-    game_layer.start_game()
-    while game_layer.game_state.turn < game_layer.game_state.max_turns:
-        take_turn_old()
-        print('')
-    print("Done with game: " + game_layer.game_state.game_id)
-    print("Final score was: " + str(game_layer.get_score()["finalScore"]))
-
-
 def training_main(q_table_name=None, verbose=False):
     try:
         with open(q_table_name, 'rb') as f:
@@ -175,44 +164,6 @@ def training_main(q_table_name=None, verbose=False):
     if q_table_name is not None:
         with open(q_table_name, 'wb') as f:
             pickle.dump(q_table, f)
-
-
-def take_turn_old():
-    # TODO Implement your artificial intelligence here.
-    # TODO Take one action per turn until the game ends.
-    # TODO The following is a short example of how to use the StarterKit
-
-    state = game_layer.game_state
-
-    if len(state.residences) < 1:
-        for i in range(len(state.map)):
-            for j in range(len(state.map)):
-                if state.map[i][j] == 0:
-                    x = i
-                    y = j
-                    break
-        game_layer.place_foundation((x, y), game_layer.game_state.available_residence_buildings[0].building_name)
-    else:
-        the_only_residence = state.residences[0]
-        print(f'current temp: {the_only_residence.temperature}')
-        if the_only_residence.build_progress < 100:
-            game_layer.build((the_only_residence.X, the_only_residence.Y))
-        elif the_only_residence.health < 50:
-            game_layer.maintenance((the_only_residence.X, the_only_residence.Y))
-        elif the_only_residence.temperature < 18 or the_only_residence.temperature > 24:
-            rtn_dict = adjust.heat(game_layer)
-            if rtn_dict['callback'] is not None:
-                rtn_dict['callback'](*rtn_dict['args'])
-            else:
-                game_layer.wait()
-
-        else:
-            game_layer.wait()
-        print('-------------------')
-    for message in game_layer.game_state.messages:
-        print(message)
-    for error in game_layer.game_state.errors:
-        print("Error: " + error)
 
 
 def end_games():
