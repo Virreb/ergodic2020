@@ -5,7 +5,10 @@ import numpy as np
 from actions import build, maintain, adjust
 from constants import *
 
-api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
+from joblib import Parallel, delayed
+
+api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"  # DICKS
+#api_key = "4a958351-c215-41f9-b3f2-97630267252b" # BRUNSÅS
 # The different map names can be found on considition.com/rules
 map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
 
@@ -79,7 +82,7 @@ def get_possible_actions_with_callback():
     return action_callback_dict
 
 
-def train(q_table, eps, verbose=False):
+def train(q_table, eps, game_layer,verbose=False):
     game_layer.new_game(map_name)
 
     print("Starting game: " + game_layer.game_state.game_id)
@@ -150,20 +153,19 @@ def train(q_table, eps, verbose=False):
 
     print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
+    game_layer.end_game()
 
+    return q_learning
 
-def training_main(q_table_name=None, verbose=False):
-    try:
-        with open(q_table_name, 'rb') as f:
-            q_table = pickle.load(f)
-    except FileNotFoundError:
-        q_table = dict()
+def training_main(q_table, eps, verbose=False):
+    game_layer = GameLayer(api_key)
 
-    train(q_table, 0.5, verbose=verbose)
-
-    if q_table_name is not None:
-        with open(q_table_name, 'wb') as f:
-            pickle.dump(q_table, f)
+    q_learning = train(q_table, eps, game_layer, verbose=verbose)
+    
+    #if q_table_name is not None:
+    #    with open(q_table_name, 'wb') as f:
+    #        pickle.dump(q_table, f)
+    return q_learning
 
 
 def end_games():
@@ -174,8 +176,64 @@ def end_games():
     print('Ended all current games')
 
 
+def update_q_table(q_table_list):
+    tmp_states = []
+    for q_table in q_table_list:
+        states = tmp_states + list(q_table.keys())
+    states = set(states)
+    final_q_table = {}
+    for state in states:
+        final_q_table[state] = {}
+
+        tmp_q_table_list = []
+        for q_table in q_table_list:
+            if state in q_table.keys():
+                tmp_q_table_list.append(q_table)
+        actions = []
+        for q_table in tmp_q_table_list:
+            actions = actions + list(q_table[state].keys())
+        actions = set(actions)
+        for action in actions:
+            vals = []
+            for q_table in tmp_q_table_list:
+                if action in q_table[state].keys():
+                    vals.append(q_table[state][action])
+            final_q_table[state][action] = np.mean(vals)
+
+    return final_q_table
+
 if __name__ == "__main__":
+    #from joblib import Parallel, delayed
+    #import time, math
     end_games()
+    eps = 0.8
+    eps_decline = 0.002
     # train(dict(), 0.5)
-    #training_main('q_tables/q_victor_20201004.pkl', verbose=True)
-    main_old()
+    JOBS = 4
+    #start = time.time()
+    nbr_iterations = 2
+    q_table_name = 'q_tables/q_victor_20201004.pkl'
+    for i in range(nbr_iterations):
+        try:
+            with open(q_table_name, 'rb') as f:
+                q_table = pickle.load(f)
+        except FileNotFoundError:
+            q_table = dict()
+
+        q_table_list = Parallel(n_jobs=4)(
+            delayed(training_main)
+            (q_table, eps, verbose=True) 
+            for job in range(JOBS))
+
+        #q_table_list = [training_main(q_table, eps, verbose=True)]
+        q_table = update_q_table(q_table_list)
+        
+        with open(q_table_name, 'wb') as f:
+            pickle.dump(q_table, f)
+        
+        eps -= eps*eps_decline
+
+    #training_main(q_table_name, eps,verbose=True)
+    #main_old()
+    #end = time.time()
+    #print('{:.4f} s'.format(end-start))
