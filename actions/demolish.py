@@ -1,6 +1,6 @@
 
 def residence(game_layer):
-    state = game_layer.state
+    state = game_layer.game_state
 
     order_to_demolish = ['Cabin', 'Apartments']
     return_dict = {'text': None, 'callback': None, 'args': None}
@@ -11,7 +11,7 @@ def residence(game_layer):
                 return_dict = {
                     'text': f'Demolishing residence building at {(b.X, b.Y)}',
                     'callback': game_layer.demolish(),
-                    'args': (b.X, b.Y)
+                    'args': ((b.X, b.Y), )
                 }
                 break
 

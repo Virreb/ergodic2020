@@ -1,6 +1,6 @@
 import pickle
 from game_layer import GameLayer
-from q_learning_algo import QLearningBase
+from q_learning_algo import QLearning
 import numpy as np
 from actions import build, maintain, adjust, demolish, upgrade
 from constants import *
@@ -10,141 +10,6 @@ api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
 map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
 
 game_layer = GameLayer(api_key)
-
-
-class StateActionCollection:
-    def __init__(self, previous_state, current_state, action):
-        self.previous_state = previous_state
-        self.current_state = current_state
-        self.action = action
-
-
-class QLearning:
-    def __init__(self, main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table):
-        self.main_q_learning = QLearningBase(main_q_table)
-        self.residence_q_learning = QLearningBase(residence_q_table)
-        self.improve_q_learning = QLearningBase(improve_q_table)
-        self.utility_q_learning = QLearningBase(utility_q_table)
-        self.upgrade_q_learning = QLearningBase(upgrade_q_table)
-        self.eps = 0.5
-
-    def get_q_learning_routine(self, key) -> QLearningBase:
-        if key == 'main':
-            return self.main_q_learning
-        elif key == 'residence':
-            return self.residence_q_learning
-        elif key == 'improve':
-            return self.improve_q_learning
-        elif key == 'utility':
-            return self.utility_q_learning
-        elif key == 'upgrade':
-            return self.upgrade_q_learning
-        else:
-            raise RuntimeError(f'key {key} not supported')
-
-    def update_tables(self, action_chain, reward):
-        for key, collection in action_chain.items():
-            q_learning_routine = self.get_q_learning_routine(key)
-            q_learning_routine.update_rule(previous_state=collection.previous_state,
-                                           current_state=collection.current_state,
-                                           selected_action=collection.action,
-                                           reward=reward)
-
-    def get_action(self, list_of_possible_actions, routine_type, state):
-        q_learning_routine = self.get_q_learning_routine(routine_type)
-        action_q_vals = {action: q_learning_routine.q_table[state][action] for action in list_of_possible_actions}
-        main_action = select_action(action_q_vals, self.eps)
-        return main_action
-
-    def get_action_chain_with_callback(self,
-                                       possible_action_structure,
-                                       main_state,
-                                       residence_state,
-                                       improve_state,
-                                       utility_state,
-                                       upgrade_state):
-        action_chain = dict()
-        possible_actions = possible_action_structure['main']['actions']
-        main_action = self.get_action(possible_actions, 'main', main_state)
-        action_chain['main'] = StateActionCollection(previous_state=main_state,
-                                                     action=main_action,
-                                                     current_state=None)
-
-        if main_action == 'residence':
-            possible_actions = list(possible_action_structure['residence']['callback_collection'].keys())
-            residence_action = self.get_action(possible_actions, 'residence', residence_state)
-            action_chain['residence'] = StateActionCollection(previous_state=residence_state,
-                                                              action=residence_action,
-                                                              current_state=None)
-            callback_collection = possible_action_structure['residence']['callback_collection'][residence_action]
-
-        elif main_action == 'improve':
-            possible_actions = possible_action_structure['improve']['actions']
-            improve_action = self.get_action(possible_actions, 'improve', improve_state)
-            action_chain['improve'] = StateActionCollection(previous_state=improve_state,
-                                                            action=improve_action,
-                                                            current_state=None)
-
-            if improve_action == 'utility':
-                possible_actions = list(possible_action_structure['utility']['callback_collection'].keys())
-                utility_action = self.get_action(possible_actions, 'utility', utility_state)
-                action_chain['utility'] = StateActionCollection(previous_state=utility_state,
-                                                                action=utility_action,
-                                                                current_state=None)
-                callback_collection = possible_action_structure['utility']['callback_collection'][utility_action]
-
-            elif improve_action == 'maintain':#
-                callback_collection = possible_action_structure['maintain']['callback_collection']
-            elif improve_action == 'upgrade':
-                possible_actions = list(possible_action_structure['upgrade']['callback_collection'].keys())
-                upgrade_action = self.get_action(possible_actions, 'upgrade', upgrade_state)
-
-                action_chain['upgrade'] = StateActionCollection(previous_state=upgrade_state,
-                                                                action=upgrade_action,
-                                                                current_state=None)
-                callback_collection = possible_action_structure['upgrade']['callback_collection'][upgrade_action]
-
-            elif improve_action == 'adjust_energy':#
-                callback_collection = possible_action_structure['adjust_energy']['callback_collection']
-            else:
-                raise RuntimeError(f'improve action {improve_action} not valid')
-        elif main_action == 'demolish':#
-            callback_collection = possible_action_structure['demolish']['callback_collection']
-        elif main_action == 'wait': #
-            callback_collection = possible_action_structure['wait']['callback_collection']
-        else:
-            raise RuntimeError(f'main action {main_action} is not a valid main action')
-
-        return action_chain, callback_collection
-
-
-def select_action(actions_q_values, eps):
-    r = np.random.rand()
-    if r < eps:
-        action = np.random.choice(list(actions_q_values.keys()))
-    else:
-        action, _ = QLearningBase.get_action_and_max_q_value(actions_q_values)
-
-    return action
-
-
-def get_possible_actions_with_callback():
-    build_types = ['Residence', 'Park', 'Mall', 'WindTurbine']
-    action_callback_dict = dict()
-    for build_type in build_types:
-        rtn_dict = build.building(game_layer, build_type)
-        if rtn_dict['callback'] is not None:
-            action_callback_dict[f'build_{build_type}'] = rtn_dict
-
-    rtn_dict = maintain.residence(game_layer)
-    if rtn_dict['callback'] is not None:
-        action_callback_dict['maintain'] = rtn_dict
-
-    rtn_dict = adjust.heat(game_layer)
-    if rtn_dict['callback'] is not None:
-        action_callback_dict['adjust_heat'] = rtn_dict
-
-    return action_callback_dict
 
 
 def get_possible_actions_structure():
@@ -169,7 +34,6 @@ def get_possible_actions_structure():
 
     # loop over utilities
     for utility_type in ALL_UTILITY_BUILDING_NAMES:
-        possible_actions = list()
         rtn_dict = build.building(game_layer, utility_type)
         if rtn_dict['callback'] is not None:
 
@@ -210,7 +74,14 @@ def get_possible_actions_structure():
     return possible_actions_structure
 
 
-def train(q_table, eps, verbose=False):
+def init_missing_states(q_table, state, pos_acts=list()):
+    if state not in q_table:
+        q_table[state] = dict()
+    for act in pos_acts:
+        if act not in q_table[state]:
+            q_table[state][act] = 0
+
+def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps, verbose=False):
     game_layer.new_game(map_name)
 
     print("Starting game: " + game_layer.game_state.game_id)
@@ -218,7 +89,30 @@ def train(q_table, eps, verbose=False):
     # init
     game_layer.start_game()
     game_state = game_layer.game_state
-    q_learning = QLearningBase(q_table=q_table)
+    q_learning = QLearning(main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps)
+
+    possible_actions_structure = get_possible_actions_structure()
+
+    main_state = game_state.get_state_string(game_layer, 'main')
+    residence_state = game_state.get_state_string(game_layer, 'residence')
+    improve_state = game_state.get_state_string(game_layer, 'improve')
+    utility_state = game_state.get_state_string(game_layer, 'utility')
+    upgrade_state = game_state.get_state_string(game_layer, 'upgrade')
+
+    init_missing_states(q_learning.main_q_learning.q_table, main_state,
+                        pos_acts=possible_actions_structure['main']['actions'])
+    if 'residence' in possible_actions_structure:
+        init_missing_states(q_learning.residence_q_learning.q_table, residence_state,
+                            pos_acts=list(possible_actions_structure['residence']['callback_collection'].keys()))
+    if 'improve' in possible_actions_structure:
+        init_missing_states(q_learning.improve_q_learning.q_table, improve_state,
+                            pos_acts=possible_actions_structure['improve']['actions'])
+    if 'utility' in possible_actions_structure:
+        init_missing_states(q_learning.utility_q_learning.q_table, utility_state,
+                            pos_acts=list(possible_actions_structure['utility']['callback_collection'].keys()))
+    if 'upgrade' in possible_actions_structure:
+        init_missing_states(q_learning.upgrade_q_learning.q_table, upgrade_state,
+                            pos_acts=list(possible_actions_structure['upgrade']['callback_collection'].keys()))
 
     # take turns
     while game_state.turn < game_state.max_turns:
@@ -226,56 +120,53 @@ def train(q_table, eps, verbose=False):
         if verbose:
             print(f'turn: {game_state.turn}, funds: {game_state.funds}, pop: {game_state.total_population}')
 
-        # get last turn
-        # prev_state_agg = game_state.aggregated_state_string(game_layer)
-        prev_state_agg = game_state.get_state_string(game_layer, q_step_name='main')
         prev_score = game_state.get_score()
 
-        if prev_state_agg not in q_table:
-            q_table[prev_state_agg] = dict()
 
-        # get possible actions
-        actions_callback = get_possible_actions_with_callback()
-        possible_actions = list(actions_callback.keys())
-
-        if len(possible_actions) == 0:      # TODO: Borde vi inte alltid tillåta wait?
-            possible_actions.append('wait')
-        for possible_action in possible_actions:
-            if possible_action not in q_table:
-                q_table[prev_state_agg][possible_action] = 0
-
-        # get q vals and select action
-        action_q_vals = {action: q_table[prev_state_agg][action] for action in possible_actions}
-        selected_action = select_action(action_q_vals, eps)     # TODO: Implement logic to lower eps over turns
-
-        if verbose:
-            print(f'took action {selected_action}')
-
-        if selected_action == 'wait':
-            game_layer.wait()
+        action_chain, callback = q_learning.get_action_chain_with_callback(possible_actions_structure, main_state,
+                                                                           residence_state, improve_state,
+                                                                           utility_state, upgrade_state)
+        for ac in action_chain.keys():
+            print(ac, action_chain[ac].action)
+        if callback['args'] is None:
+            callback['callback']()
         else:
-            actions_callback[selected_action]['callback'](*actions_callback[selected_action]['args'])
+            callback['callback'](*callback['args'])
 
-            if verbose:
-                print(f'action info: {actions_callback[selected_action].get("text", "nothing to say")}')
+        possible_actions_structure = get_possible_actions_structure()
 
-        # get new state and score
-        # current_state_agg = game_state.aggregated_state_string(game_layer)
-        current_state_agg = game_state.get_state_string(game_layer, q_step_name='main')
-        current_score = game_state.get_score()
-        delta_score = current_score-prev_score
+        main_state = game_state.get_state_string(game_layer, 'main')
+        residence_state = game_state.get_state_string(game_layer, 'residence')
+        improve_state = game_state.get_state_string(game_layer, 'improve')
+        utility_state = game_state.get_state_string(game_layer, 'utility')
+        upgrade_state = game_state.get_state_string(game_layer, 'upgrade')
+
+        init_missing_states(q_learning.main_q_learning.q_table, main_state,
+                            pos_acts=possible_actions_structure['main']['actions'])
+        if 'residence' in possible_actions_structure:
+            init_missing_states(q_learning.residence_q_learning.q_table, residence_state,
+                                pos_acts=list(possible_actions_structure['residence']['callback_collection'].keys()))
+        if 'improve' in possible_actions_structure:
+            init_missing_states(q_learning.improve_q_learning.q_table, improve_state,
+                                pos_acts=possible_actions_structure['improve']['actions'])
+        if 'utility' in possible_actions_structure:
+            init_missing_states(q_learning.utility_q_learning.q_table, utility_state,
+                                pos_acts=list(possible_actions_structure['utility']['callback_collection'].keys()))
+        if 'upgrade' in possible_actions_structure:
+            init_missing_states(q_learning.upgrade_q_learning.q_table, upgrade_state,
+                                pos_acts=list(possible_actions_structure['upgrade']['callback_collection'].keys()))
 
         if verbose:
-            print(f'reward: {delta_score}')
+            print(f'action info: {callback.get("text", "nothing to say")}')
 
-        # update q_table
-        if current_state_agg not in q_table:
-            q_table[current_state_agg] = dict()
+        current_score = game_state.get_score()
+        delta_score = current_score - prev_score
 
-        q_learning.update_rule(previous_state=prev_state_agg,
-                               current_state=current_state_agg,
-                               selected_action=selected_action,
-                               reward=delta_score)
+        for key, collection in action_chain.items():
+            collection.current_state = game_state.get_state_string(game_layer, key)
+
+        q_learning.update_tables(action_chain, delta_score)
+
         if verbose:
             print('--------------------------------------------')
 
@@ -308,4 +199,6 @@ def end_games():
 if __name__ == "__main__":
     end_games()
     # train(dict(), 0.5)
-    training_main('q_tables/q_victor_20201004.pkl', verbose=True)
+    #training_main('q_tables/q_victor_20201004.pkl', verbose=True)
+    train(main_q_table=dict(), residence_q_table=dict(), improve_q_table=dict(), utility_q_table=dict(),
+          upgrade_q_table=dict(), eps=0.8, verbose=True)

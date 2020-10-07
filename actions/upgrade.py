@@ -54,8 +54,8 @@ def do(game_layer):
                         }
 
                     elif upgrade_type == 'Playground' and \
-                            b_bp.max_happiness - b.happines_per_tick_per_pop < min_happiness:
-                        min_happiness = b_bp.max_happiness - b.happines_per_tick_per_pop
+                            b_bp.max_happiness - b.happiness_per_tick_per_pop < min_happiness:
+                        min_happiness = b_bp.max_happiness - b.happiness_per_tick_per_pop
                         actions_dict[upgrade_type] = {
                             'text': f'Upgrading {b.X, b.Y} with {upgrade_type}',
                             'callback': game_layer.buy_upgrade,

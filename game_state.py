@@ -282,8 +282,7 @@ class GameState:
         state_keys_in_step = {
             'main': ['needed_energy_level', 'free_tile_exists', 'min_happiness_per_tick_per_pop', 'housing_demand',
                      'ongoing_residence_building', 'ongoing_utility_building', 'turn', 'funds'],
-            'residence': ['housing_queue', 'funds'].
-                extend([f"residence_{r}_exists" for r in ALL_RESIDENCE_BUILDING_NAMES]),
+            'residence': ['housing_queue', 'funds'] + [f"residence_{r}_exists" for r in ALL_RESIDENCE_BUILDING_NAMES],
             'improve': ['min_building_health', 'max_temp_diff', 'min_happiness_per_tick_per_pop', 'needed_energy_level',
                         'ongoing_utility_building', 'max_energy_diff'],
             'utility': ['mean_income_per_tick', 'needed_energy_level', 'min_happiness_per_tick_per_pop'],
