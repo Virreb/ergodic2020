@@ -12,7 +12,7 @@ map_name = "training1"  # TODO: You map choice here. If left empty, the map "tra
 game_layer = GameLayer(api_key)
 
 
-class StateActionContainer:
+class StateActionCollection:
     def __init__(self, previous_state, current_state, action):
         self.previous_state = previous_state
         self.current_state = current_state
@@ -26,6 +26,7 @@ class QLearning:
         self.improve_q_learning = QLearningBase(improve_q_table)
         self.utility_q_learning = QLearningBase(utility_q_table)
         self.upgrade_q_learning = QLearningBase(upgrade_q_table)
+        self.eps = 0.5
 
     def get_q_learning_routine(self, key) -> QLearningBase:
         if key == 'main':
@@ -48,6 +49,76 @@ class QLearning:
                                            current_state=collection.current_state,
                                            selected_action=collection.action,
                                            reward=reward)
+
+    def get_action(self, list_of_possible_actions, routine_type, state):
+        q_learning_routine = self.get_q_learning_routine(routine_type)
+        action_q_vals = {action: q_learning_routine.q_table[state][action] for action in list_of_possible_actions}
+        main_action = select_action(action_q_vals, self.eps)
+        return main_action
+
+    def get_action_chain_with_callback(self,
+                                       possible_action_structure,
+                                       main_state,
+                                       residence_state,
+                                       improve_state,
+                                       utility_state,
+                                       upgrade_state):
+        action_chain = dict()
+        possible_actions = possible_action_structure['main']['actions']
+        main_action = self.get_action(possible_actions, 'main', main_state)
+        action_chain['main'] = StateActionCollection(previous_state=main_state,
+                                                     action=main_action,
+                                                     current_state=None)
+
+        if main_action == 'build':
+            possible_actions = possible_action_structure['residence']['actions']
+            build_action = self.get_action(possible_actions, 'residence', residence_state)
+            action_chain['build'] = StateActionCollection(previous_state=residence_state,
+                                                          action=build_action,
+                                                          current_state=None)
+            callback_collection = possible_action_structure['residence']['callback_collection']
+
+        elif main_action == 'improve':
+            possible_actions = possible_action_structure['improve']['actions']
+            improve_action = self.get_action(possible_actions, 'improve', improve_state)
+            action_chain['improve'] = StateActionCollection(previous_state=improve_state,
+                                                            action=improve_action,
+                                                            current_state=None)
+
+            if improve_action == 'utility':
+                possible_actions = possible_action_structure['utility']['actions']
+                utility_action = self.get_action(possible_actions, 'utility', utility_state)
+                action_chain['utility'] = StateActionCollection(previous_state=utility_state,
+                                                                action=utility_action,
+                                                                current_state=None)
+                callback_collection = possible_action_structure['utility']['callback_collection']
+
+            elif improve_action == 'maintain':
+                callback_collection = possible_action_structure['maintain']['callback_collection']
+            elif improve_action == 'upgrade':
+                possible_actions = possible_action_structure['upgrade']['actions']
+                upgrade_action = self.get_action(possible_actions, 'upgrade', upgrade_state)
+
+                action_chain['upgrade'] = StateActionCollection(previous_state=upgrade_state,
+                                                                action=upgrade_action,
+                                                                current_state=None)
+                callback_collection = possible_action_structure['upgrade']['callback_collection']
+
+            elif improve_action == 'adjust_energy':
+                callback_collection = possible_action_structure['adjust_energy']['callback_collection']
+            else:
+                raise RuntimeError(f'improve action {improve_action} not valid')
+        elif main_action == 'demolish':
+            callback_collection = possible_action_structure['demolish']['callback_collection']
+        elif main_action == 'wait':
+            callback_collection = possible_action_structure['wait']['callback_collection']
+        else:
+            raise RuntimeError(f'main action {main_action} is not a valid main action')
+
+        return action_chain, callback_collection
+
+
+
 
 
 def select_action(actions_q_values, eps):
