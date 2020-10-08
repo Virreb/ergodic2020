@@ -10,7 +10,7 @@ def residence(game_layer):
 
                 return_dict = {
                     'text': f'Demolishing residence building at {(b.X, b.Y)}',
-                    'callback': game_layer.demolish(),
+                    'callback': game_layer.demolish,
                     'args': ((b.X, b.Y), )
                 }
                 break
