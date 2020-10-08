@@ -176,18 +176,33 @@ def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upg
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
 
 
-def training_main(q_table_name=None, verbose=False):
+def training_main(q_table_name=None, eps = 0.8):
     try:
         with open(q_table_name, 'rb') as f:
-            q_table = pickle.load(f)
+            q_tables = pickle.load(f)
+        main_q_table = q_tables['main_q_table']
+        residence_q_table = q_tables['residence_q_table']
+        improve_q_table = q_tables['improve_q_table']
+        utility_q_table = q_tables['utility_q_table']
+        upgrade_q_table = q_tables['upgrade_q_table']
     except FileNotFoundError:
-        q_table = dict()
+        main_q_table = dict()
+        residence_q_table = dict()
+        improve_q_table = dict()
+        utility_q_table = dict()
+        upgrade_q_table = dict()
+        q_tables = dict()
+        q_tables['main_q_table'] = main_q_table
+        q_tables['residence_q_table'] = residence_q_table
+        q_tables['improve_q_table'] = improve_q_table
+        q_tables['utility_q_table'] = utility_q_table
+        q_tables['upgrade_q_table'] = upgrade_q_table
 
-    train(q_table, 0.5, verbose=verbose)
+    train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps=eps, verbose=True)
 
     if q_table_name is not None:
         with open(q_table_name, 'wb') as f:
-            pickle.dump(q_table, f)
+            pickle.dump(q_tables, f)
 
 
 def end_games():
@@ -199,8 +214,23 @@ def end_games():
 
 
 if __name__ == "__main__":
+    import traceback
     end_games()
     # train(dict(), 0.5)
-    #training_main('q_tables/q_victor_20201004.pkl', verbose=True)
-    train(main_q_table=dict(), residence_q_table=dict(), improve_q_table=dict(), utility_q_table=dict(),
-          upgrade_q_table=dict(), eps=0.8, verbose=True)
+    eps = 0.8
+    i = 1
+    while True:
+        try:
+            print('-------------------------------------------------')
+            print(f'train with eps = {eps}, round {i}')
+            training_main('q_tables/q_isak_night2.pkl', eps=eps)
+            eps = eps*0.995
+            if eps < 0.1:
+                eps = 0.1
+            i += 1
+        except:
+            traceback.print_exc()
+        print('-------------------------------------------------')
+
+    #train(main_q_table=dict(), residence_q_table=dict(), improve_q_table=dict(), utility_q_table=dict(),
+    #      upgrade_q_table=dict(), eps=0.8, verbose=True)

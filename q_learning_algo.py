@@ -31,7 +31,10 @@ class QLearningBase:
                 self.q_table[previous_state] = {selected_action: 0}
             old_q_val = 0
 
-        _, max_next_q_val = self.get_action_and_max_q_value(self.q_table[current_state])
+        try:
+            _, max_next_q_val = self.get_action_and_max_q_value(self.q_table[current_state])
+        except KeyError:
+            max_next_q_val = 0
         future_q_value = old_q_val + self.learning_rate * (reward + self.discount_factor * max_next_q_val - old_q_val)
         self.q_table[previous_state][selected_action] = future_q_value
 
