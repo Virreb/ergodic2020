@@ -98,6 +98,9 @@ def building(game_layer, building_type):
 
         current_buildings = [b for b in state.utilities if b.building_name == building_type]
 
+    else:
+        current_buildings = []
+
     for b in current_buildings:
 
         if b.build_progress < 100:    # Keep on building
