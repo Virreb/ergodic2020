@@ -4,26 +4,30 @@ from q_learning_algo import QLearning
 import numpy as np
 from actions import build, maintain, adjust, demolish, upgrade
 from constants import *
+from tqdm import tqdm
 
-api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"   # TODO: Your api key here
+from joblib import Parallel, delayed
+
+api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"  # DICKS
+#api_key = "4a958351-c215-41f9-b3f2-97630267252b" # BRUNSÅS
 # The different map names can be found on considition.com/rules
 map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
 
-game_layer = GameLayer(api_key)
+# game_layer = GameLayer(api_key)
 
 
-def get_possible_actions_structure():
+def get_possible_actions_structure(game_layer):
     possible_actions_structure = dict()
 
+    # wait
     possible_actions_structure['wait'] = {'callback_collection': {'callback': game_layer.wait,
                                                                   'args': None}}
-
+    # demolish
     rtn_dict = demolish.residence(game_layer)
     if rtn_dict['callback'] is not None:
         possible_actions_structure['demolish'] = {'callback_collection': rtn_dict}
 
-
-    #improve
+    # improve
     rtn_dict = maintain.residence(game_layer)
     if rtn_dict['callback'] is not None:
         possible_actions_structure['maintain'] = {'callback_collection': rtn_dict}
@@ -51,11 +55,10 @@ def get_possible_actions_structure():
     if len(upgrade_dict) > 0:
         possible_actions_structure['upgrade'] = {'callback_collection': upgrade_dict}
 
-    # residence
+    # build residence
     build_dict = build.building(game_layer, 'Residence')
     if len(build_dict) > 0:
         possible_actions_structure['residence'] = {'callback_collection': build_dict}
-
 
     # improve actions
     improve_actions = list()
@@ -65,15 +68,19 @@ def get_possible_actions_structure():
     if len(improve_actions) > 0:
         possible_actions_structure['improve'] = {'actions': improve_actions}
 
-    # main actions
-    main_actions = list()
-    for key in ['residence', 'wait', 'demolish', 'improve']:
-        if key in possible_actions_structure:
-            main_actions.append(key)
-    if len(main_actions) > 0:
-        possible_actions_structure['main'] = {'actions': main_actions}
-
     return possible_actions_structure
+
+# def train(q_table, eps, game_layer,verbose=False):
+
+#     # main actions
+#     main_actions = list()
+#     for key in ['residence', 'wait', 'demolish', 'improve']:
+#         if key in possible_actions_structure:
+#             main_actions.append(key)
+#     if len(main_actions) > 0:
+#         possible_actions_structure['main'] = {'actions': main_actions}
+
+#     return possible_actions_structure
 
 
 def init_missing_states(q_table, state, pos_acts=list()):
@@ -83,7 +90,9 @@ def init_missing_states(q_table, state, pos_acts=list()):
         if act not in q_table[state]:
             q_table[state][act] = 0
 
-def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps, verbose=False):
+
+def train(game_layer, q_tables, eps=0.8, verbose=False):
+
     game_layer.new_game(map_name)
 
     print("Starting game: " + game_layer.game_state.game_id)
@@ -91,9 +100,9 @@ def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upg
     # init
     game_layer.start_game()
     game_state = game_layer.game_state
-    q_learning = QLearning(main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps)
+    q_learning = QLearning(q_tables, eps)
 
-    possible_actions_structure = get_possible_actions_structure()
+    possible_actions_structure = get_possible_actions_structure(game_layer)
 
     main_state = game_state.get_state_string(game_layer, 'main')
     residence_state = game_state.get_state_string(game_layer, 'residence')
@@ -107,7 +116,7 @@ def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upg
         init_missing_states(q_learning.residence_q_learning.q_table, residence_state,
                             pos_acts=list(possible_actions_structure['residence']['callback_collection'].keys()))
     if 'improve' in possible_actions_structure:
-        init_missing_states(q_learning.improve_q_learning.q_table, improve_state,
+        init_missing_states(q_learning.improve_q_learning.q_tables, improve_state,
                             pos_acts=possible_actions_structure['improve']['actions'])
     if 'utility' in possible_actions_structure:
         init_missing_states(q_learning.utility_q_learning.q_table, utility_state,
@@ -124,18 +133,18 @@ def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upg
 
         prev_score = game_state.get_score()
 
-
         action_chain, callback = q_learning.get_action_chain_with_callback(possible_actions_structure, main_state,
                                                                            residence_state, improve_state,
                                                                            utility_state, upgrade_state)
-        for ac in action_chain.keys():
-            print(ac, action_chain[ac].action)
+        # for ac in action_chain.keys():
+        #     if verbose:
+        #         print(ac, action_chain[ac].action)
         if callback['args'] is None:
             callback['callback']()
         else:
             callback['callback'](*callback['args'])
 
-        possible_actions_structure = get_possible_actions_structure()
+        possible_actions_structure = get_possible_actions_structure(game_layer)
 
         main_state = game_state.get_state_string(game_layer, 'main')
         residence_state = game_state.get_state_string(game_layer, 'residence')
@@ -143,19 +152,19 @@ def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upg
         utility_state = game_state.get_state_string(game_layer, 'utility')
         upgrade_state = game_state.get_state_string(game_layer, 'upgrade')
 
-        init_missing_states(q_learning.main_q_learning.q_table, main_state,
+        init_missing_states(q_learning.main_q_learning.q_tables, main_state,
                             pos_acts=possible_actions_structure['main']['actions'])
         if 'residence' in possible_actions_structure:
-            init_missing_states(q_learning.residence_q_learning.q_table, residence_state,
+            init_missing_states(q_learning.residence_q_learning.q_tables, residence_state,
                                 pos_acts=list(possible_actions_structure['residence']['callback_collection'].keys()))
         if 'improve' in possible_actions_structure:
-            init_missing_states(q_learning.improve_q_learning.q_table, improve_state,
+            init_missing_states(q_learning.improve_q_learning.q_tables, improve_state,
                                 pos_acts=possible_actions_structure['improve']['actions'])
         if 'utility' in possible_actions_structure:
-            init_missing_states(q_learning.utility_q_learning.q_table, utility_state,
+            init_missing_states(q_learning.utility_q_learning.q_tables, utility_state,
                                 pos_acts=list(possible_actions_structure['utility']['callback_collection'].keys()))
         if 'upgrade' in possible_actions_structure:
-            init_missing_states(q_learning.upgrade_q_learning.q_table, upgrade_state,
+            init_missing_states(q_learning.upgrade_q_learning.q_tables, upgrade_state,
                                 pos_acts=list(possible_actions_structure['upgrade']['callback_collection'].keys()))
 
         if verbose:
@@ -174,63 +183,102 @@ def train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upg
 
     print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
+    game_layer.end_game()
+
+    return q_learning
 
 
-def training_main(q_table_name=None, eps = 0.8):
-    try:
-        with open(q_table_name, 'rb') as f:
-            q_tables = pickle.load(f)
-        main_q_table = q_tables['main_q_table']
-        residence_q_table = q_tables['residence_q_table']
-        improve_q_table = q_tables['improve_q_table']
-        utility_q_table = q_tables['utility_q_table']
-        upgrade_q_table = q_tables['upgrade_q_table']
-    except FileNotFoundError:
-        main_q_table = dict()
-        residence_q_table = dict()
-        improve_q_table = dict()
-        utility_q_table = dict()
-        upgrade_q_table = dict()
-        q_tables = dict()
-        q_tables['main_q_table'] = main_q_table
-        q_tables['residence_q_table'] = residence_q_table
-        q_tables['improve_q_table'] = improve_q_table
-        q_tables['utility_q_table'] = utility_q_table
-        q_tables['upgrade_q_table'] = upgrade_q_table
+def training_main(q_tables, eps, verbose=False):
+    game_layer = GameLayer(api_key)
 
-    train(main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps=eps, verbose=True)
-
-    if q_table_name is not None:
-        with open(q_table_name, 'wb') as f:
-            pickle.dump(q_tables, f)
+    # q_learning = train(q_table, eps, game_layer, verbose=verbose)
+    q_learning = train(game_layer, q_tables, eps=eps, verbose=True)
+    
+    #if q_table_name is not None:
+    #    with open(q_table_name, 'wb') as f:
+    #        pickle.dump(q_table, f)
+    return q_learning
 
 
 def end_games():
     from api import get_games, end_game
     games = get_games(api_key)
     for game in games:
-        end_game(api_key, game['gameId'])
+        if game['active'] is True:
+            end_game(api_key, game['gameId'])
     print('Ended all current games')
 
 
-if __name__ == "__main__":
-    import traceback
-    end_games()
-    # train(dict(), 0.5)
-    eps = 0.8
-    i = 1
-    while True:
-        try:
-            print('-------------------------------------------------')
-            print(f'train with eps = {eps}, round {i}')
-            training_main('q_tables/q_isak_night2.pkl', eps=eps)
-            eps = eps*0.995
-            if eps < 0.1:
-                eps = 0.1
-            i += 1
-        except:
-            traceback.print_exc()
-        print('-------------------------------------------------')
+def update_q_table(q_table_list):
+    tmp_states = []
+    for q_table in q_table_list:
+        states = tmp_states + list(q_table.keys())
+    states = set(states)
+    final_q_table = {}
+    for state in states:
+        final_q_table[state] = {}
 
-    #train(main_q_table=dict(), residence_q_table=dict(), improve_q_table=dict(), utility_q_table=dict(),
-    #      upgrade_q_table=dict(), eps=0.8, verbose=True)
+        tmp_q_table_list = []
+        for q_table in q_table_list:
+            if state in q_table.keys():
+                tmp_q_table_list.append(q_table)
+        actions = []
+        for q_table in tmp_q_table_list:
+            actions = actions + list(q_table[state].keys())
+        actions = set(actions)
+        for action in actions:
+            vals = []
+            for q_table in tmp_q_table_list:
+                if action in q_table[state].keys():
+                    vals.append(q_table[state][action])
+            final_q_table[state][action] = np.mean(vals)
+
+    return final_q_table
+
+
+if __name__ == "__main__":
+
+    #from joblib import Parallel, delayed
+    #import time, math
+    end_games()
+    eps = 0.8
+    eps_decline = 0.002
+    # train(dict(), 0.5)
+    JOBS = 1
+    #start = time.time()
+    nbr_iterations = 1000
+    q_tables_save_path = 'q_tables/q_tables_1.pkl'
+    # q_table_names = ['main_q_learning', 'residence_q_learning', 'improve_q_learning', 'utility_q_learning',
+    #                  'upgrade_q_learning']
+    q_table_names = ['main', 'residence', 'improve', 'utility', 'upgrade']
+    merged_q_tables = {}
+    for i in tqdm(range(nbr_iterations)):
+        try:
+            with open(q_tables_save_path, 'rb') as f:
+                q_tables = pickle.load(f)
+        except FileNotFoundError:
+            q_tables = {key: dict() for key in q_table_names}
+
+        q_table_list = Parallel(n_jobs=4)(
+            delayed(training_main)
+            (q_tables, eps, verbose=True)
+            for job in range(JOBS))
+
+        for q_table_name in q_table_names:
+            # specific_q_tables = [q[q_table_name] for q in q_table_list]
+            # specific_q_tables = [q.q_table_name.q_table for q in q_table_list]
+            specific_q_tables = [q.get_q_learning_routine(q_table_name).q_table for q in q_table_list]
+            merged_q_tables[q_table_name] = update_q_table(specific_q_tables)
+
+        #q_table_list = [training_main(q_table, eps, verbose=True)]
+        # q_tables = update_q_table(q_table_list)
+        
+        with open(q_tables_save_path, 'wb') as f:
+            pickle.dump(merged_q_tables, f)
+        
+        eps -= eps*eps_decline
+
+    #training_main(q_table_name, eps,verbose=True)
+    #main_old()
+    #end = time.time()
+    #print('{:.4f} s'.format(end-start))
