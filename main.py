@@ -126,7 +126,7 @@ def train(game_layer, q_tables, eps=0.8, map_name='training1', verbose=False):
         init_missing_states(q_learning.residence_q_learning.q_table, residence_state,
                             pos_acts=list(possible_actions_structure['residence']['callback_collection'].keys()))
     if 'improve' in possible_actions_structure:
-        init_missing_states(q_learning.improve_q_learning.q_tables, improve_state,
+        init_missing_states(q_learning.improve_q_learning.q_table, improve_state,
                             pos_acts=possible_actions_structure['improve']['actions'])
     if 'utility' in possible_actions_structure:
         init_missing_states(q_learning.utility_q_learning.q_table, utility_state,
