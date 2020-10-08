@@ -12,7 +12,8 @@ from joblib import Parallel, delayed
 api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"  # DICKS
 #api_key = "4a958351-c215-41f9-b3f2-97630267252b" # BRUNSÅS
 # The different map names can be found on considition.com/rules
-map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
+# map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
+all_map_names = ['training1', 'training2']
 
 # game_layer = GameLayer(api_key)
 
@@ -100,7 +101,7 @@ def init_missing_states(q_table, state, pos_acts=list()):
             q_table[state][act] = 0
 
 
-def train(game_layer, q_tables, eps=0.8, verbose=False):
+def train(game_layer, q_tables, eps=0.8, map_name='training1', verbose=False):
 
     game_layer.new_game(map_name)
     time.sleep(0.1)
@@ -202,8 +203,8 @@ def training_main(q_tables, eps, job, verbose=False):
 
     if verbose:
         print('Starting new game: ', f'{job}/4')
-
-    q_learning = train(game_layer, q_tables, eps=eps, verbose=verbose)
+    map_name = np.random.choice(all_map_names)
+    q_learning = train(game_layer, q_tables, map_name=map_name, eps=eps, verbose=verbose)
     
     return q_learning
 
@@ -247,7 +248,8 @@ def update_q_table(q_table_list):
 if __name__ == "__main__":
     end_games()
     eps = 0.8
-    eps_decline = 0.002
+    eps_decline = 0.005
+    # eps_decline = 0.002
     JOBS = 4
     nbr_iterations = 1000
     q_tables_save_path = 'q_tables/q_tables_1.pkl'

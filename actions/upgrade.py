@@ -17,7 +17,7 @@ def do(game_layer):
             min_happiness = 1
             for b in state.residences:
                 b_bp = game_layer.get_residence_blueprint(b.building_name)
-                if upgrade.effect not in b.effects:
+                if upgrade.effect not in b.effects and b.build_progress == 100:
 
                     if upgrade_type in ['Caretaker', 'Charger'] and b.current_pop > building_max_pop:
                         building_max_pop = b_bp.max_pop
