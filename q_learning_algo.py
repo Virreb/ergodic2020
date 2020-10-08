@@ -54,13 +54,15 @@ def select_action(actions_q_values, eps):
 
 
 class QLearning:
-    def __init__(self, main_q_table, residence_q_table, improve_q_table, utility_q_table, upgrade_q_table, eps):
-        self.main_q_learning = QLearningBase(main_q_table)
-        self.residence_q_learning = QLearningBase(residence_q_table)
-        self.improve_q_learning = QLearningBase(improve_q_table)
-        self.utility_q_learning = QLearningBase(utility_q_table)
-        self.upgrade_q_learning = QLearningBase(upgrade_q_table)
+    def __init__(self, q_tables, eps):
+        self.main_q_learning = QLearningBase(q_tables['main'])
+        self.residence_q_learning = QLearningBase(q_tables['residence'])
+        self.improve_q_learning = QLearningBase(q_tables['improve'])
+        self.utility_q_learning = QLearningBase(q_tables['utility'])
+        self.upgrade_q_learning = QLearningBase(q_tables['upgrade'])
         self.eps = eps
+        # self.q_tables = [self.main_q_learning, self.residence_q_learning, self.improve_q_learning,
+        #                  self.utility_q_learning, self.upgrade_q_learning]
 
     def get_q_learning_routine(self, key) -> QLearningBase:
         if key == 'main':
