@@ -59,12 +59,18 @@ def get_best_available_position_to_residences(state, building_type, direction='n
     return build_coord
 
 
-def choose_residence_to_build(state, available_buildings):
+def get_callbacks_for_available_residences(game_layer, build_coord, available_buildings):
     # TODO: Implement better logic here
 
-    building_to_build = np.random.choice(available_buildings)
+    actions_dict = {}
+    for b in available_buildings:
+        actions_dict[b] = {
+            'text': f'Starting to build a new residence: {b}',
+            'callback': game_layer.place_foundation,
+            'args': (build_coord, b)
+        }
 
-    return building_to_build
+    return actions_dict
 
 
 def building(game_layer, building_type):
@@ -78,11 +84,11 @@ def building(game_layer, building_type):
         # check if any utility building in progress, then return none
         for b in state.utilities:
             if b.build_progress < 100:
-                return return_dict
+                return {}
 
         current_buildings = state.residences
 
-    elif building_type in ALL_UTILITY_BUILDING_NAMES:
+    elif building_type in [b.building_name for b in state.available_utility_buildings]:
 
         # Check if any residence building or other utility building in progress, then return None
         for b in state.residences + state.utilities:
@@ -99,7 +105,7 @@ def building(game_layer, building_type):
             return_dict['text'] = f'Building: {b.building_name} - {progress}%'
             return_dict['callback'] = game_layer.build
             return_dict['args'] = ((b.X, b.Y), )
-            return return_dict
+            return {b.building_name: return_dict}
 
     build_coord = get_best_available_position_to_residences(state, building_type, direction='nearest')
     # if building_type in ['Residence', 'Park', 'Mall']:
@@ -132,14 +138,15 @@ def building(game_layer, building_type):
         if len(possible_buildings_to_build) > 0:
 
             if building_type == 'Residence':
-                building_to_build = choose_residence_to_build(state, possible_buildings_to_build)
+                return_dict = get_callbacks_for_available_residences(game_layer, build_coord,
+                                                                     possible_buildings_to_build)
 
             elif building_type in ALL_UTILITY_BUILDING_NAMES:
-                building_to_build = possible_buildings_to_build[0]  # there will only be one here
+                action = possible_buildings_to_build[0]  # there will only be one here
 
-            return_dict['text'] = f'Starting to build new: {building_to_build}'
-            return_dict['callback'] = game_layer.place_foundation
-            return_dict['args'] = (build_coord, building_to_build)
+                return_dict['text'] = f'Starting to build new: {action}'
+                return_dict['callback'] = game_layer.place_foundation
+                return_dict['args'] = (build_coord, action)
 
     return return_dict
 

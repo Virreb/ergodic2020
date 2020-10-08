@@ -1,4 +1,6 @@
 from game_state import GameState
+
+
 def heat(game_layer, temperature_threshold=3):
     state: GameState = game_layer.game_state
 
