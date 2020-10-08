@@ -5,6 +5,7 @@ import numpy as np
 from actions import build, maintain, adjust, demolish, upgrade
 from constants import *
 from tqdm import tqdm
+import time
 
 from joblib import Parallel, delayed
 
@@ -68,6 +69,14 @@ def get_possible_actions_structure(game_layer):
     if len(improve_actions) > 0:
         possible_actions_structure['improve'] = {'actions': improve_actions}
 
+    # main
+    main_actions = []
+    for key in ['residence', 'improve', 'demolish', 'wait']:
+        if key in possible_actions_structure:
+            main_actions.append(key)
+    if len(main_actions) > 0:
+        possible_actions_structure['main'] = {'actions': main_actions}
+
     return possible_actions_structure
 
 # def train(q_table, eps, game_layer,verbose=False):
@@ -94,7 +103,7 @@ def init_missing_states(q_table, state, pos_acts=list()):
 def train(game_layer, q_tables, eps=0.8, verbose=False):
 
     game_layer.new_game(map_name)
-
+    time.sleep(0.1)
     print("Starting game: " + game_layer.game_state.game_id)
 
     # init
@@ -129,7 +138,7 @@ def train(game_layer, q_tables, eps=0.8, verbose=False):
     while game_state.turn < game_state.max_turns:
 
         if verbose:
-            print(f'turn: {game_state.turn}, funds: {game_state.funds}, pop: {game_state.total_population}')
+            print(f'turn: {game_state.turn}, funds: {round(game_state.funds, 0)}, pop: {game_state.total_population}')
 
         prev_score = game_state.get_score()
 
@@ -152,19 +161,19 @@ def train(game_layer, q_tables, eps=0.8, verbose=False):
         utility_state = game_state.get_state_string(game_layer, 'utility')
         upgrade_state = game_state.get_state_string(game_layer, 'upgrade')
 
-        init_missing_states(q_learning.main_q_learning.q_tables, main_state,
+        init_missing_states(q_learning.main_q_learning.q_table, main_state,
                             pos_acts=possible_actions_structure['main']['actions'])
         if 'residence' in possible_actions_structure:
-            init_missing_states(q_learning.residence_q_learning.q_tables, residence_state,
+            init_missing_states(q_learning.residence_q_learning.q_table, residence_state,
                                 pos_acts=list(possible_actions_structure['residence']['callback_collection'].keys()))
         if 'improve' in possible_actions_structure:
-            init_missing_states(q_learning.improve_q_learning.q_tables, improve_state,
+            init_missing_states(q_learning.improve_q_learning.q_table, improve_state,
                                 pos_acts=possible_actions_structure['improve']['actions'])
         if 'utility' in possible_actions_structure:
-            init_missing_states(q_learning.utility_q_learning.q_tables, utility_state,
+            init_missing_states(q_learning.utility_q_learning.q_table, utility_state,
                                 pos_acts=list(possible_actions_structure['utility']['callback_collection'].keys()))
         if 'upgrade' in possible_actions_structure:
-            init_missing_states(q_learning.upgrade_q_learning.q_tables, upgrade_state,
+            init_missing_states(q_learning.upgrade_q_learning.q_table, upgrade_state,
                                 pos_acts=list(possible_actions_structure['upgrade']['callback_collection'].keys()))
 
         if verbose:
@@ -183,20 +192,19 @@ def train(game_layer, q_tables, eps=0.8, verbose=False):
 
     print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
-    game_layer.end_game()
+    # game_layer.end_game()
 
     return q_learning
 
 
-def training_main(q_tables, eps, verbose=False):
+def training_main(q_tables, eps, job, verbose=False):
     game_layer = GameLayer(api_key)
 
-    # q_learning = train(q_table, eps, game_layer, verbose=verbose)
-    q_learning = train(game_layer, q_tables, eps=eps, verbose=True)
+    if verbose:
+        print('Starting new game: ', f'{job}/4')
+
+    q_learning = train(game_layer, q_tables, eps=eps, verbose=verbose)
     
-    #if q_table_name is not None:
-    #    with open(q_table_name, 'wb') as f:
-    #        pickle.dump(q_table, f)
     return q_learning
 
 
@@ -237,21 +245,16 @@ def update_q_table(q_table_list):
 
 
 if __name__ == "__main__":
-
-    #from joblib import Parallel, delayed
-    #import time, math
     end_games()
     eps = 0.8
     eps_decline = 0.002
-    # train(dict(), 0.5)
-    JOBS = 1
-    #start = time.time()
+    JOBS = 4
     nbr_iterations = 1000
     q_tables_save_path = 'q_tables/q_tables_1.pkl'
-    # q_table_names = ['main_q_learning', 'residence_q_learning', 'improve_q_learning', 'utility_q_learning',
-    #                  'upgrade_q_learning']
     q_table_names = ['main', 'residence', 'improve', 'utility', 'upgrade']
     merged_q_tables = {}
+    verbose = False
+
     for i in tqdm(range(nbr_iterations)):
         try:
             with open(q_tables_save_path, 'rb') as f:
@@ -259,26 +262,16 @@ if __name__ == "__main__":
         except FileNotFoundError:
             q_tables = {key: dict() for key in q_table_names}
 
-        q_table_list = Parallel(n_jobs=4)(
+        q_table_list = Parallel(n_jobs=JOBS)(
             delayed(training_main)
-            (q_tables, eps, verbose=True)
+            (q_tables, eps, job, verbose=verbose)
             for job in range(JOBS))
 
         for q_table_name in q_table_names:
-            # specific_q_tables = [q[q_table_name] for q in q_table_list]
-            # specific_q_tables = [q.q_table_name.q_table for q in q_table_list]
             specific_q_tables = [q.get_q_learning_routine(q_table_name).q_table for q in q_table_list]
             merged_q_tables[q_table_name] = update_q_table(specific_q_tables)
 
-        #q_table_list = [training_main(q_table, eps, verbose=True)]
-        # q_tables = update_q_table(q_table_list)
-        
         with open(q_tables_save_path, 'wb') as f:
             pickle.dump(merged_q_tables, f)
         
         eps -= eps*eps_decline
-
-    #training_main(q_table_name, eps,verbose=True)
-    #main_old()
-    #end = time.time()
-    #print('{:.4f} s'.format(end-start))
