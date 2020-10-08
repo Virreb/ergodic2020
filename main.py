@@ -13,7 +13,8 @@ api_key = "c3d744bb-8484-42db-a36f-e52d86f98d29"  # DICKS
 #api_key = "4a958351-c215-41f9-b3f2-97630267252b" # BRUNSÅS
 # The different map names can be found on considition.com/rules
 # map_name = "training1"  # TODO: You map choice here. If left empty, the map "training1" will be selected.
-all_map_names = ['training1', 'training2']
+# all_map_names = ['training1', 'training2']
+all_map_names = ['Gothenburg']
 
 # game_layer = GameLayer(api_key)
 
@@ -191,7 +192,7 @@ def train(game_layer, q_tables, eps=0.8, map_name='training1', verbose=False):
         if verbose:
             print('--------------------------------------------')
 
-    print("Done with game: " + game_layer.game_state.game_id)
+    # print("Done with game: " + game_layer.game_state.game_id)
     print("Final score was: " + str(game_layer.get_score()["finalScore"]))
     # game_layer.end_game()
 
@@ -247,7 +248,7 @@ def update_q_table(q_table_list):
 
 if __name__ == "__main__":
     end_games()
-    eps = 0.8
+    eps = 0.2
     eps_decline = 0.005
     # eps_decline = 0.002
     JOBS = 4
